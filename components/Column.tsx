@@ -12,6 +12,7 @@ import type { Card, Column as ColumnType } from '@/lib/supabase/queries'
 type Props = {
   column: ColumnType
   cards: Card[]
+  visibleCardIds: Set<string> | null // null یعنی فیلتر فعال نیست، همه دیده بشن
   onAddCard: (columnId: string, title: string) => void
   onDeleteColumn: (columnId: string) => void
   onUpdateColumnTitle: (columnId: string, title: string) => void
@@ -21,6 +22,7 @@ type Props = {
 export default function Column({
   column,
   cards,
+  visibleCardIds,
   onAddCard,
   onDeleteColumn,
   onUpdateColumnTitle,
@@ -66,7 +68,7 @@ export default function Column({
         setDroppableRef(node)
       }}
       style={style}
-      className="min-w-65 max-w-65 bg-column rounded-xl p-3 flex flex-col"
+      className="min-w-[260px] max-w-[260px] bg-column rounded-xl p-3 flex flex-col"
     >
       <div className="flex justify-between items-center mb-3 px-1">
         <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -110,11 +112,19 @@ export default function Column({
         </button>
       </div>
 
-      <div className="flex-1 min-h-2.5">
+      <div className="flex-1 min-h-[10px]">
         <SortableContext items={cardIds} strategy={verticalListSortingStrategy}>
-          {sortedCards.map((card) => (
-            <CardComponent key={card.id} card={card} onOpen={onOpenCard} />
-          ))}
+          {sortedCards.map((card) => {
+            const isVisible = visibleCardIds === null || visibleCardIds.has(card.id)
+            return (
+              <div
+                key={card.id}
+                style={{ display: isVisible ? 'block' : 'none' }}
+              >
+                <CardComponent card={card} onOpen={onOpenCard} />
+              </div>
+            )
+          })}
         </SortableContext>
       </div>
 

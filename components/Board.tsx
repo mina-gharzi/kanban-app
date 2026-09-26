@@ -15,6 +15,7 @@ import {
   SortableContext,
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
+import BoardFilters from "./BoardFilters";
 import Column from "./Column";
 import CardComponent from "./Card";
 import AddColumnForm from "./AddColumnForm";
@@ -69,6 +70,10 @@ export default function Board({ boardId }: Props) {
     useSensor(PointerSensor, {
       activationConstraint: { distance: 5 },
     }),
+  );
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeLabelFilter, setActiveLabelFilter] = useState<string | null>(
+    null,
   );
 
   const sortedColumns = [...columns].sort((a, b) => a.position - b.position);
@@ -272,6 +277,23 @@ export default function Board({ boardId }: Props) {
       addToast("آپدیت تاریخ سررسید با مشکل مواجه شد.");
     }
   }
+  const hasActiveFilter =
+    searchQuery.trim() !== "" || activeLabelFilter !== null;
+
+  const visibleCardIds = hasActiveFilter
+    ? new Set(
+        cards
+          .filter((c) => {
+            const matchesSearch =
+              searchQuery.trim() === "" ||
+              c.title.toLowerCase().includes(searchQuery.trim().toLowerCase());
+            const matchesLabel =
+              activeLabelFilter === null || c.label_color === activeLabelFilter;
+            return matchesSearch && matchesLabel;
+          })
+          .map((c) => c.id),
+      )
+    : null;
   return (
     <DndContext
       sensors={sensors}
@@ -279,6 +301,13 @@ export default function Board({ boardId }: Props) {
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
+      <BoardFilters
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        activeLabelFilter={activeLabelFilter}
+        onLabelFilterChange={setActiveLabelFilter}
+      />
+
       <div className="flex gap-4 p-6 overflow-x-auto min-h-screen bg-surface">
         <SortableContext
           items={sortedColumns.map((c) => c.id)}
@@ -289,6 +318,7 @@ export default function Board({ boardId }: Props) {
               key={column.id}
               column={column}
               cards={cards.filter((c) => c.column_id === column.id)}
+              visibleCardIds={visibleCardIds}
               onAddCard={handleAddCard}
               onDeleteColumn={handleDeleteColumn}
               onUpdateColumnTitle={handleUpdateColumnTitle}
@@ -304,7 +334,7 @@ export default function Board({ boardId }: Props) {
           <CardComponent card={activeCard} onOpen={() => {}} />
         ) : null}
         {activeColumn ? (
-          <div className="min-w-65 max-w-65 bg-column rounded-xl p-3 opacity-90">
+          <div className="min-w-[260px] max-w-[260px] bg-column rounded-xl p-3 opacity-90">
             <h3 className="text-surface font-medium text-sm">
               {activeColumn.title}
             </h3>
