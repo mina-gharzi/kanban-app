@@ -18,6 +18,7 @@ type BoardState = {
   updateCardTitleLocal: (cardId: string, title: string) => void;
   updateColumnTitleLocal: (columnId: string, title: string) => void;
   updateCardDescriptionLocal: (cardId: string, description: string) => void
+  updateCardLabelLocal: (cardId: string, labelColor: string | null) => void
 };
 
 export const useBoardStore = create<BoardState>((set) => ({
@@ -55,6 +56,12 @@ updateColumnTitleLocal: (columnId, title) =>
   set((state) => ({
     cards: state.cards.map((c) =>
       c.id === cardId ? { ...c, description } : c
+    ),
+  })),
+  updateCardLabelLocal: (cardId, labelColor) =>
+  set((state) => ({
+    cards: state.cards.map((c) =>
+      c.id === cardId ? { ...c, label_color: labelColor } : c
     ),
   })),
 }));

@@ -26,14 +26,19 @@ export default function Card({ card, onOpen }: Props) {
       {...attributes}
       {...listeners}
       onClick={() => onOpen(card)}
-      className="bg-card text-surface rounded-lg p-3 mb-2 shadow cursor-grab active:cursor-grabbing"
+      className="bg-card text-surface rounded-lg mb-2 shadow cursor-grab active:cursor-grabbing overflow-hidden"
     >
-      <p className="text-sm">{card.title}</p>
-      {card.description && (
-        <p className="text-xs text-surface/60 mt-1 line-clamp-2">
-          {card.description}
-        </p>
+      {card.label_color && (
+        <div className="h-1.5 w-full" style={{ backgroundColor: card.label_color }} />
       )}
+      <div className="p-3">
+        <p className="text-sm">{card.title}</p>
+        {card.description && (
+          <p className="text-xs text-surface/60 mt-1 line-clamp-2">
+            {card.description}
+          </p>
+        )}
+      </div>
     </div>
   )
 }

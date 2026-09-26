@@ -2,12 +2,14 @@
 
 import { useState } from 'react'
 import type { Card as CardType } from '@/lib/supabase/queries'
+import { LABEL_COLORS } from '@/lib/labelColors'
 
 type Props = {
   card: CardType
   onClose: () => void
   onUpdateTitle: (cardId: string, title: string) => void
   onUpdateDescription: (cardId: string, description: string) => void
+  onUpdateLabel: (cardId: string, labelColor: string | null) => void
   onDelete: (cardId: string) => void
 }
 
@@ -16,6 +18,7 @@ export default function CardModal({
   onClose,
   onUpdateTitle,
   onUpdateDescription,
+  onUpdateLabel,
   onDelete,
 }: Props) {
   const [title, setTitle] = useState(card.title)
@@ -32,6 +35,11 @@ export default function CardModal({
     onClose()
   }
 
+  function handleLabelClick(color: string) {
+    // اگه رنگ فعلی رو دوباره بزنی، لیبل برداشته می‌شه
+    onUpdateLabel(card.id, card.label_color === color ? null : color)
+  }
+
   return (
     <div
       className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
@@ -46,6 +54,23 @@ export default function CardModal({
           onChange={(e) => setTitle(e.target.value)}
           className="w-full bg-card text-surface font-medium rounded-md p-2 mb-3 outline-none border border-transparent focus:border-accent"
         />
+
+        <label className="text-surface/60 text-xs block mb-1">لیبل</label>
+        <div className="flex gap-2 mb-3">
+          {LABEL_COLORS.map((label) => (
+            <button
+              key={label.value}
+              title={label.name}
+              onClick={() => handleLabelClick(label.value)}
+              className="w-6 h-6 rounded-full border-2"
+              style={{
+                backgroundColor: label.value,
+                borderColor:
+                  card.label_color === label.value ? 'white' : 'transparent',
+              }}
+            />
+          ))}
+        </div>
 
         <label className="text-surface/60 text-xs block mb-1">توضیحات</label>
         <textarea
@@ -67,10 +92,7 @@ export default function CardModal({
             حذف کارت
           </button>
           <div className="flex gap-2">
-            <button
-              onClick={onClose}
-              className="text-surface/60 text-xs px-3 py-1.5"
-            >
+            <button onClick={onClose} className="text-surface/60 text-xs px-3 py-1.5">
               انصراف
             </button>
             <button
