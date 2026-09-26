@@ -161,3 +161,12 @@ export async function updateCardLabel(cardId: string, labelColor: string | null)
     .eq('id', cardId)
   if (error) throw error
 }
+
+export async function updateColumnPositions(
+  updates: { id: string; position: number }[]
+) {
+  const promises = updates.map((u) =>
+    supabase.from('columns').update({ position: u.position }).eq('id', u.id)
+  )
+  await Promise.all(promises)
+}
