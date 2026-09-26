@@ -1,66 +1,83 @@
-'use client'
+"use client";
 
-import { useEffect, useState } from 'react'
-import Link from 'next/link'
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   getBoards,
   createBoard,
   deleteBoard,
   type Board,
-} from '@/lib/supabase/queries'
-import { useToastStore } from '@/store/toastStore'
+} from "@/lib/supabase/queries";
+import { useToastStore } from "@/store/toastStore";
+import { signOut } from "@/lib/supabase/auth";
+import { useRouter } from "next/navigation";
 
 export default function BoardsList() {
-  const [boards, setBoards] = useState<Board[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [newTitle, setNewTitle] = useState('')
+  const [boards, setBoards] = useState<Board[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [newTitle, setNewTitle] = useState("");
 
-  const addToast = useToastStore((s) => s.addToast)
+  const addToast = useToastStore((s) => s.addToast);
 
+  const router = useRouter();
+
+  async function handleSignOut() {
+    await signOut();
+    router.push("/login");
+  }
   useEffect(() => {
-    loadBoards()
-  }, [])
+    loadBoards();
+  }, []);
 
   async function loadBoards() {
     try {
-      setIsLoading(true)
-      const data = await getBoards()
-      setBoards(data)
+      setIsLoading(true);
+      const data = await getBoards();
+      setBoards(data);
     } catch (err) {
-      console.error('خطا در دریافت بوردها:', err)
-      addToast('دریافت لیست بوردها با مشکل مواجه شد.')
+      console.error("خطا در دریافت بوردها:", err);
+      addToast("دریافت لیست بوردها با مشکل مواجه شد.");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
   }
 
   async function handleCreate(e: React.FormEvent) {
-    e.preventDefault()
-    const title = newTitle.trim()
-    if (!title) return
+    e.preventDefault();
+    const title = newTitle.trim();
+    if (!title) return;
     try {
-      const board = await createBoard(title)
-      setBoards((prev) => [board, ...prev])
-      setNewTitle('')
+      const board = await createBoard(title);
+      setBoards((prev) => [board, ...prev]);
+      setNewTitle("");
     } catch (err) {
-      console.error('خطا در ساخت بورد:', err)
-      addToast('ساخت بورد با مشکل مواجه شد.')
+      console.error("خطا در ساخت بورد:", err);
+      addToast("ساخت بورد با مشکل مواجه شد.");
     }
   }
 
   async function handleDelete(boardId: string) {
-    setBoards((prev) => prev.filter((b) => b.id !== boardId)) // optimistic
+    setBoards((prev) => prev.filter((b) => b.id !== boardId)); // optimistic
     try {
-      await deleteBoard(boardId)
+      await deleteBoard(boardId);
     } catch (err) {
-      console.error('خطا در حذف بورد:', err)
-      addToast('حذف بورد با مشکل مواجه شد.')
+      console.error("خطا در حذف بورد:", err);
+      addToast("حذف بورد با مشکل مواجه شد.");
     }
   }
 
   return (
     <div className="min-h-screen bg-surface p-8">
       <h1 className="text-column text-xl font-bold mb-6">بوردهای من</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-column text-xl font-bold">بوردهای من</h1>
+        <button
+          onClick={handleSignOut}
+          className="text-accent text-sm hover:opacity-70"
+        >
+          خروج
+        </button>
+      </div>
 
       <form onSubmit={handleCreate} className="flex gap-2 mb-8 max-w-md">
         <input
@@ -93,7 +110,7 @@ export default function BoardsList() {
                   {board.title}
                 </h3>
                 <p className="text-surface/50 text-xs">
-                  {new Date(board.created_at).toLocaleDateString('fa-IR')}
+                  {new Date(board.created_at).toLocaleDateString("fa-IR")}
                 </p>
               </Link>
               <button
@@ -107,5 +124,5 @@ export default function BoardsList() {
         </div>
       )}
     </div>
-  )
+  );
 }

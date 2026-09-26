@@ -140,9 +140,13 @@ export async function getBoards(): Promise<Board[]> {
 }
 
 export async function createBoard(title: string): Promise<Board> {
+  const { data: userData } = await supabase.auth.getUser()
+  const userId = userData.user?.id
+  if (!userId) throw new Error('کاربر لاگین نکرده است.')
+
   const { data, error } = await supabase
     .from('boards')
-    .insert({ title })
+    .insert({ title, created_by: userId })
     .select()
     .single()
 

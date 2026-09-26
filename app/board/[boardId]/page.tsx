@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Board from '@/components/Board'
+import AuthGuard from '@/components/AuthGuard'
 import { getBoardData } from '@/lib/supabase/queries'
 import { useBoardStore } from '@/store/boardStore'
 
@@ -35,21 +36,19 @@ export default function BoardPage() {
     if (boardId) loadBoard()
   }, [boardId, setColumns, setCards])
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-surface flex items-center justify-center">
-        <p className="text-column">در حال بارگذاری...</p>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-surface flex items-center justify-center">
-        <p className="text-accent">{error}</p>
-      </div>
-    )
-  }
-
-  return <Board boardId={boardId} />
+  return (
+    <AuthGuard>
+      {isLoading ? (
+        <div className="min-h-screen bg-surface flex items-center justify-center">
+          <p className="text-column">در حال بارگذاری...</p>
+        </div>
+      ) : error ? (
+        <div className="min-h-screen bg-surface flex items-center justify-center">
+          <p className="text-accent">{error}</p>
+        </div>
+      ) : (
+        <Board boardId={boardId} />
+      )}
+    </AuthGuard>
+  )
 }
