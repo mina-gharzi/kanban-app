@@ -334,7 +334,7 @@ export default function Board({ boardId }: Props) {
           <CardComponent card={activeCard} onOpen={() => {}} />
         ) : null}
         {activeColumn ? (
-          <div className="min-w-[260px] max-w-[260px] bg-column rounded-xl p-3 opacity-90">
+          <div className="min-w-65 max-w-65 bg-column rounded-xl p-3 opacity-90">
             <h3 className="text-surface font-medium text-sm">
               {activeColumn.title}
             </h3>

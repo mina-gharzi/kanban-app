@@ -68,7 +68,7 @@ export default function Column({
         setDroppableRef(node)
       }}
       style={style}
-      className="min-w-[260px] max-w-[260px] bg-column rounded-xl p-3 flex flex-col"
+      className="min-w-65 max-w-65 bg-column rounded-xl p-3 flex flex-col"
     >
       <div className="flex justify-between items-center mb-3 px-1">
         <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -112,7 +112,7 @@ export default function Column({
         </button>
       </div>
 
-      <div className="flex-1 min-h-[10px]">
+      <div className="flex-1 min-h-2.5">
         <SortableContext items={cardIds} strategy={verticalListSortingStrategy}>
           {sortedCards.map((card) => {
             const isVisible = visibleCardIds === null || visibleCardIds.has(card.id)
