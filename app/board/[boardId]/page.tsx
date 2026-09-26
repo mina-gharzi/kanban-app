@@ -1,54 +1,16 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
-import Board from '@/components/Board'
 import AuthGuard from '@/components/AuthGuard'
-import { getBoardData } from '@/lib/supabase/queries'
-import { useBoardStore } from '@/store/boardStore'
+import Board from '@/components/board/Board'
 
 export default function BoardPage() {
   const params = useParams()
   const boardId = params.boardId as string
 
-  const setColumns = useBoardStore((s) => s.setColumns)
-  const setCards = useBoardStore((s) => s.setCards)
-
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    async function loadBoard() {
-      try {
-        setIsLoading(true)
-        const { columns, cards } = await getBoardData(boardId)
-        setColumns(columns)
-        setCards(cards)
-        setError(null)
-      } catch (err) {
-        console.error('خطا در دریافت بورد:', err)
-        setError('مشکلی در دریافت اطلاعات بورد پیش اومد.')
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    if (boardId) loadBoard()
-  }, [boardId, setColumns, setCards])
-
   return (
     <AuthGuard>
-      {isLoading ? (
-        <div className="min-h-screen bg-surface flex items-center justify-center">
-          <p className="text-column">در حال بارگذاری...</p>
-        </div>
-      ) : error ? (
-        <div className="min-h-screen bg-surface flex items-center justify-center">
-          <p className="text-accent">{error}</p>
-        </div>
-      ) : (
-        <Board boardId={boardId} />
-      )}
+      <Board boardId={boardId} />
     </AuthGuard>
   )
 }

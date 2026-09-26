@@ -2,12 +2,12 @@
 
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import type { Card as CardType } from '@/lib/supabase/queries'
+import type { Card as CardType } from '@/lib/board/types'
 import { getDueDateStatus, formatDueDate } from '@/lib/dueDate'
 
 type Props = {
   card: CardType
-  onOpen: (card: CardType) => void
+  onOpen?: (cardId: string) => void
 }
 
 export default function Card({ card, onOpen }: Props) {
@@ -22,13 +22,20 @@ export default function Card({ card, onOpen }: Props) {
 
   const dueDateStatus = getDueDateStatus(card.due_date)
 
+  function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (event.key !== 'Enter' && event.key !== ' ') return
+    event.preventDefault()
+    onOpen?.(card.id)
+  }
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       {...attributes}
       {...listeners}
-      onClick={() => onOpen(card)}
+      onClick={() => onOpen?.(card.id)}
+      onKeyDown={handleKeyDown}
       className="bg-card text-surface rounded-lg mb-2 shadow cursor-grab active:cursor-grabbing overflow-hidden"
     >
       {card.label_color && (

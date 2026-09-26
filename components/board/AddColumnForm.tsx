@@ -6,7 +6,7 @@ type Props = {
   onAdd: (title: string) => void
 }
 
-export default function AddCardForm({ onAdd }: Props) {
+export default function AddColumnForm({ onAdd }: Props) {
   const [title, setTitle] = useState('')
   const [isOpen, setIsOpen] = useState(false)
 
@@ -22,20 +22,24 @@ export default function AddCardForm({ onAdd }: Props) {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="w-full text-right text-sm text-surface/70 hover:text-surface py-2"
+        className="min-w-[260px] h-fit bg-column/50 text-surface/70 hover:text-surface rounded-xl p-3 text-sm"
       >
-        + افزودن کارت
+        + افزودن ستون
       </button>
     )
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mt-2">
+    <form
+      onSubmit={handleSubmit}
+      className="min-w-[260px] h-fit bg-column rounded-xl p-3"
+    >
       <input
         autoFocus
         value={title}
         onChange={(e) => setTitle(e.target.value)}
-        placeholder="عنوان کارت..."
+        placeholder="عنوان ستون..."
+        aria-label="عنوان ستون جدید"
         className="w-full bg-card text-surface text-sm rounded-md p-2 outline-none border border-transparent focus:border-accent"
       />
       <div className="flex gap-2 mt-2">

@@ -18,9 +18,11 @@ export default function BoardFilters({
   return (
     <div className="flex flex-wrap items-center gap-3 px-6 pt-4 bg-surface">
       <input
+        type="search"
         value={searchQuery}
         onChange={(e) => onSearchChange(e.target.value)}
         placeholder="جستجو در عنوان کارت‌ها..."
+        aria-label="جستجو در عنوان کارت‌ها"
         className="bg-column/10 text-column text-sm rounded-md p-2 outline-none border border-column/20 focus:border-accent w-64"
       />
 
@@ -30,6 +32,8 @@ export default function BoardFilters({
           <button
             key={label.value}
             title={label.name}
+            aria-label={`فیلتر بر اساس لیبل ${label.name}`}
+            aria-pressed={activeLabelFilter === label.value}
             onClick={() =>
               onLabelFilterChange(activeLabelFilter === label.value ? null : label.value)
             }
@@ -43,6 +47,7 @@ export default function BoardFilters({
         {activeLabelFilter && (
           <button
             onClick={() => onLabelFilterChange(null)}
+            aria-label="پاک کردن فیلتر لیبل"
             className="text-accent text-xs mr-1 hover:opacity-70"
           >
             پاک‌کردن
