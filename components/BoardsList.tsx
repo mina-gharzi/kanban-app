@@ -8,11 +8,14 @@ import {
   deleteBoard,
   type Board,
 } from '@/lib/supabase/queries'
+import { useToastStore } from '@/store/toastStore'
 
 export default function BoardsList() {
   const [boards, setBoards] = useState<Board[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [newTitle, setNewTitle] = useState('')
+
+  const addToast = useToastStore((s) => s.addToast)
 
   useEffect(() => {
     loadBoards()
@@ -25,6 +28,7 @@ export default function BoardsList() {
       setBoards(data)
     } catch (err) {
       console.error('خطا در دریافت بوردها:', err)
+      addToast('دریافت لیست بوردها با مشکل مواجه شد.')
     } finally {
       setIsLoading(false)
     }
@@ -40,6 +44,7 @@ export default function BoardsList() {
       setNewTitle('')
     } catch (err) {
       console.error('خطا در ساخت بورد:', err)
+      addToast('ساخت بورد با مشکل مواجه شد.')
     }
   }
 
@@ -49,6 +54,7 @@ export default function BoardsList() {
       await deleteBoard(boardId)
     } catch (err) {
       console.error('خطا در حذف بورد:', err)
+      addToast('حذف بورد با مشکل مواجه شد.')
     }
   }
 

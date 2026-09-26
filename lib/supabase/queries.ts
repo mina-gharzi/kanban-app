@@ -14,7 +14,8 @@ export type Card = {
   description: string | null
   position: number
   created_at: string
-  label_color: string | null   
+  label_color: string | null 
+  due_date: string | null  
 }
 
 export async function getBoardData(boardId: string) {
@@ -169,4 +170,11 @@ export async function updateColumnPositions(
     supabase.from('columns').update({ position: u.position }).eq('id', u.id)
   )
   await Promise.all(promises)
+}
+export async function updateCardDueDate(cardId: string, dueDate: string | null) {
+  const { error } = await supabase
+    .from('cards')
+    .update({ due_date: dueDate })
+    .eq('id', cardId)
+  if (error) throw error
 }

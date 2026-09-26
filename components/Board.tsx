@@ -1,6 +1,6 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
+import { useState } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -10,14 +10,18 @@ import {
   closestCorners,
   type DragEndEvent,
   type DragStartEvent,
-} from '@dnd-kit/core'
-import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable'
-import Column from './Column'
-import CardComponent from './Card'
-import AddColumnForm from './AddColumnForm'
-import CardModal from './CardModal'
-import { useBoardStore } from '@/store/boardStore'
-import { useRealtimeBoard } from '@/lib/supabase/useRealtimeBoard'
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  horizontalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import Column from "./Column";
+import CardComponent from "./Card";
+import AddColumnForm from "./AddColumnForm";
+import CardModal from "./CardModal";
+import { useBoardStore } from "@/store/boardStore";
+import { useToastStore } from "@/store/toastStore";
+import { useRealtimeBoard } from "@/lib/supabase/useRealtimeBoard";
 import {
   addCard,
   addColumn,
@@ -29,203 +33,245 @@ import {
   updateColumnTitle,
   updateCardDescription,
   updateCardLabel,
-} from '@/lib/supabase/queries'
-import type { Card, Column as ColumnType } from '@/lib/supabase/queries'
+  updateCardDueDate,
+} from "@/lib/supabase/queries";
+import type { Card, Column as ColumnType } from "@/lib/supabase/queries";
 
 type Props = {
-  boardId: string
-}
+  boardId: string;
+};
 
 export default function Board({ boardId }: Props) {
-  useRealtimeBoard(boardId)
+  useRealtimeBoard(boardId);
 
-  const columns = useBoardStore((s) => s.columns)
-  const cards = useBoardStore((s) => s.cards)
-  const setCards = useBoardStore((s) => s.setCards)
-  const setColumns = useBoardStore((s) => s.setColumns)
-  const addCardLocal = useBoardStore((s) => s.addCardLocal)
-  const removeCardLocal = useBoardStore((s) => s.removeCardLocal)
-  const addColumnLocal = useBoardStore((s) => s.addColumnLocal)
-  const removeColumnLocal = useBoardStore((s) => s.removeColumnLocal)
-  const updateCardTitleLocal = useBoardStore((s) => s.updateCardTitleLocal)
-  const updateColumnTitleLocal = useBoardStore((s) => s.updateColumnTitleLocal)
-  const updateCardDescriptionLocal = useBoardStore((s) => s.updateCardDescriptionLocal)
-  const updateCardLabelLocal = useBoardStore((s) => s.updateCardLabelLocal)
+  const columns = useBoardStore((s) => s.columns);
+  const cards = useBoardStore((s) => s.cards);
+  const setCards = useBoardStore((s) => s.setCards);
+  const setColumns = useBoardStore((s) => s.setColumns);
+  const addCardLocal = useBoardStore((s) => s.addCardLocal);
+  const removeCardLocal = useBoardStore((s) => s.removeCardLocal);
+  const addColumnLocal = useBoardStore((s) => s.addColumnLocal);
+  const removeColumnLocal = useBoardStore((s) => s.removeColumnLocal);
+  const updateCardTitleLocal = useBoardStore((s) => s.updateCardTitleLocal);
+  const updateColumnTitleLocal = useBoardStore((s) => s.updateColumnTitleLocal);
+  const updateCardDescriptionLocal = useBoardStore(
+    (s) => s.updateCardDescriptionLocal,
+  );
+  const updateCardLabelLocal = useBoardStore((s) => s.updateCardLabelLocal);
+  const updateCardDueDateLocal = useBoardStore((s) => s.updateCardDueDateLocal);
+  const addToast = useToastStore((s) => s.addToast);
 
-  const [activeCard, setActiveCard] = useState<Card | null>(null)
-  const [activeColumn, setActiveColumn] = useState<ColumnType | null>(null)
-  const [openCard, setOpenCard] = useState<Card | null>(null)
+  const [activeCard, setActiveCard] = useState<Card | null>(null);
+  const [activeColumn, setActiveColumn] = useState<ColumnType | null>(null);
+  const [openCard, setOpenCard] = useState<Card | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 5 },
-    })
-  )
+    }),
+  );
 
-  const sortedColumns = [...columns].sort((a, b) => a.position - b.position)
+  const sortedColumns = [...columns].sort((a, b) => a.position - b.position);
 
   function handleDragStart(event: DragStartEvent) {
-    const card = cards.find((c) => c.id === event.active.id)
+    const card = cards.find((c) => c.id === event.active.id);
     if (card) {
-      setActiveCard(card)
-      return
+      setActiveCard(card);
+      return;
     }
-    const column = columns.find((c) => c.id === event.active.id)
-    if (column) setActiveColumn(column)
+    const column = columns.find((c) => c.id === event.active.id);
+    if (column) setActiveColumn(column);
   }
 
   function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event
-    setActiveCard(null)
-    setActiveColumn(null)
-    if (!over) return
+    const { active, over } = event;
+    setActiveCard(null);
+    setActiveColumn(null);
+    if (!over) return;
 
     // حالت ۱: جابجایی خودِ ستون‌ها
-    const draggedColumn = columns.find((c) => c.id === active.id)
+    const draggedColumn = columns.find((c) => c.id === active.id);
     if (draggedColumn) {
-      if (active.id === over.id) return
+      if (active.id === over.id) return;
 
-      const oldIndex = sortedColumns.findIndex((c) => c.id === active.id)
-      const newIndex = sortedColumns.findIndex((c) => c.id === over.id)
-      if (oldIndex === -1 || newIndex === -1) return
+      const oldIndex = sortedColumns.findIndex((c) => c.id === active.id);
+      const newIndex = sortedColumns.findIndex((c) => c.id === over.id);
+      if (oldIndex === -1 || newIndex === -1) return;
 
-      const reordered = [...sortedColumns]
-      const [moved] = reordered.splice(oldIndex, 1)
-      reordered.splice(newIndex, 0, moved)
+      const reordered = [...sortedColumns];
+      const [moved] = reordered.splice(oldIndex, 1);
+      reordered.splice(newIndex, 0, moved);
 
-      const updates = reordered.map((c, index) => ({ id: c.id, position: index }))
+      const updates = reordered.map((c, index) => ({
+        id: c.id,
+        position: index,
+      }));
 
       setColumns(
         columns.map((c) => {
-          const update = updates.find((u) => u.id === c.id)
-          return update ? { ...c, position: update.position } : c
-        })
-      )
+          const update = updates.find((u) => u.id === c.id);
+          return update ? { ...c, position: update.position } : c;
+        }),
+      );
 
       updateColumnPositions(updates).catch((err) => {
-        console.error('خطا در آپدیت پوزیشن ستون:', err)
-      })
-      return
+        console.error("خطا در آپدیت پوزیشن ستون:", err);
+        addToast("جابجایی ستون با مشکل مواجه شد.");
+      });
+      return;
     }
 
     // حالت ۲: جابجایی کارت‌ها
-    const activeCardItem = cards.find((c) => c.id === active.id)
-    if (!activeCardItem) return
+    const activeCardItem = cards.find((c) => c.id === active.id);
+    if (!activeCardItem) return;
 
-    const overCard = cards.find((c) => c.id === over.id)
-    const targetColumnId = overCard ? overCard.column_id : (over.id as string)
+    const overCard = cards.find((c) => c.id === over.id);
+    const targetColumnId = overCard ? overCard.column_id : (over.id as string);
 
-    if (targetColumnId === activeCardItem.column_id && overCard?.id === active.id) {
-      return
+    if (
+      targetColumnId === activeCardItem.column_id &&
+      overCard?.id === active.id
+    ) {
+      return;
     }
 
     const targetColumnCards = cards
-      .filter((c) => c.column_id === targetColumnId && c.id !== activeCardItem.id)
-      .sort((a, b) => a.position - b.position)
+      .filter(
+        (c) => c.column_id === targetColumnId && c.id !== activeCardItem.id,
+      )
+      .sort((a, b) => a.position - b.position);
 
-    let insertIndex = targetColumnCards.length
+    let insertIndex = targetColumnCards.length;
     if (overCard) {
-      insertIndex = targetColumnCards.findIndex((c) => c.id === overCard.id)
-      if (insertIndex === -1) insertIndex = targetColumnCards.length
+      insertIndex = targetColumnCards.findIndex((c) => c.id === overCard.id);
+      if (insertIndex === -1) insertIndex = targetColumnCards.length;
     }
 
     targetColumnCards.splice(insertIndex, 0, {
       ...activeCardItem,
       column_id: targetColumnId,
-    })
+    });
 
     const cardUpdates = targetColumnCards.map((c, index) => ({
       id: c.id,
       column_id: targetColumnId,
       position: index,
-    }))
+    }));
 
     const updatedCards = cards.map((c) => {
-      const update = cardUpdates.find((u) => u.id === c.id)
-      return update ? { ...c, column_id: update.column_id, position: update.position } : c
-    })
-    setCards(updatedCards)
+      const update = cardUpdates.find((u) => u.id === c.id);
+      return update
+        ? { ...c, column_id: update.column_id, position: update.position }
+        : c;
+    });
+    setCards(updatedCards);
 
     updateManyCardPositions(cardUpdates).catch((err) => {
-      console.error('خطا در آپدیت پوزیشن کارت:', err)
-    })
+      console.error("خطا در آپدیت پوزیشن کارت:", err);
+      addToast("جابجایی کارت با مشکل مواجه شد.");
+    });
   }
 
   async function handleAddCard(columnId: string, title: string) {
-    const columnCards = cards.filter((c) => c.column_id === columnId)
-    const newPosition = columnCards.length
+    const columnCards = cards.filter((c) => c.column_id === columnId);
+    const newPosition = columnCards.length;
     try {
-      const newCard = await addCard(columnId, title, newPosition)
-      addCardLocal(newCard)
+      const newCard = await addCard(columnId, title, newPosition);
+      addCardLocal(newCard);
     } catch (err) {
-      console.error('خطا در افزودن کارت:', err)
+      console.error("خطا در افزودن کارت:", err);
+      addToast("افزودن کارت با مشکل مواجه شد.");
     }
   }
 
   async function handleDeleteCard(cardId: string) {
-    removeCardLocal(cardId)
+    removeCardLocal(cardId);
     try {
-      await deleteCard(cardId)
+      await deleteCard(cardId);
     } catch (err) {
-      console.error('خطا در حذف کارت:', err)
+      console.error("خطا در حذف کارت:", err);
+      addToast("حذف کارت با مشکل مواجه شد.");
     }
   }
 
   async function handleAddColumn(title: string) {
-    const newPosition = columns.length
+    const newPosition = columns.length;
     try {
-      const newColumn = await addColumn(boardId, title, newPosition)
-      addColumnLocal(newColumn)
+      const newColumn = await addColumn(boardId, title, newPosition);
+      addColumnLocal(newColumn);
     } catch (err) {
-      console.error('خطا در افزودن ستون:', err)
+      console.error("خطا در افزودن ستون:", err);
+      addToast("افزودن ستون با مشکل مواجه شد.");
     }
   }
 
   async function handleDeleteColumn(columnId: string) {
-    removeColumnLocal(columnId)
+    removeColumnLocal(columnId);
     try {
-      await deleteColumn(columnId)
+      await deleteColumn(columnId);
     } catch (err) {
-      console.error('خطا در حذف ستون:', err)
+      console.error("خطا در حذف ستون:", err);
+      addToast("حذف ستون با مشکل مواجه شد.");
     }
   }
 
   async function handleUpdateCardTitle(cardId: string, title: string) {
-    updateCardTitleLocal(cardId, title)
+    updateCardTitleLocal(cardId, title);
     try {
-      await updateCardTitle(cardId, title)
+      await updateCardTitle(cardId, title);
     } catch (err) {
-      console.error('خطا در آپدیت عنوان کارت:', err)
+      console.error("خطا در آپدیت عنوان کارت:", err);
+      addToast("آپدیت عنوان کارت با مشکل مواجه شد.");
     }
   }
 
   async function handleUpdateColumnTitle(columnId: string, title: string) {
-    updateColumnTitleLocal(columnId, title)
+    updateColumnTitleLocal(columnId, title);
     try {
-      await updateColumnTitle(columnId, title)
+      await updateColumnTitle(columnId, title);
     } catch (err) {
-      console.error('خطا در آپدیت عنوان ستون:', err)
+      console.error("خطا در آپدیت عنوان ستون:", err);
+      addToast("آپدیت عنوان ستون با مشکل مواجه شد.");
     }
   }
 
-  async function handleUpdateCardDescription(cardId: string, description: string) {
-    updateCardDescriptionLocal(cardId, description)
+  async function handleUpdateCardDescription(
+    cardId: string,
+    description: string,
+  ) {
+    updateCardDescriptionLocal(cardId, description);
     try {
-      await updateCardDescription(cardId, description)
+      await updateCardDescription(cardId, description);
     } catch (err) {
-      console.error('خطا در آپدیت توضیحات:', err)
+      console.error("خطا در آپدیت توضیحات:", err);
+      addToast("آپدیت توضیحات با مشکل مواجه شد.");
     }
   }
 
-  async function handleUpdateCardLabel(cardId: string, labelColor: string | null) {
-    updateCardLabelLocal(cardId, labelColor)
+  async function handleUpdateCardLabel(
+    cardId: string,
+    labelColor: string | null,
+  ) {
+    updateCardLabelLocal(cardId, labelColor);
     try {
-      await updateCardLabel(cardId, labelColor)
+      await updateCardLabel(cardId, labelColor);
     } catch (err) {
-      console.error('خطا در آپدیت لیبل:', err)
+      console.error("خطا در آپدیت لیبل:", err);
+      addToast("آپدیت لیبل با مشکل مواجه شد.");
     }
   }
-
+  async function handleUpdateCardDueDate(
+    cardId: string,
+    dueDate: string | null,
+  ) {
+    updateCardDueDateLocal(cardId, dueDate);
+    try {
+      await updateCardDueDate(cardId, dueDate);
+    } catch (err) {
+      console.error("خطا در آپدیت تاریخ سررسید:", err);
+      addToast("آپدیت تاریخ سررسید با مشکل مواجه شد.");
+    }
+  }
   return (
     <DndContext
       sensors={sensors}
@@ -254,10 +300,14 @@ export default function Board({ boardId }: Props) {
       </div>
 
       <DragOverlay>
-        {activeCard ? <CardComponent card={activeCard} onOpen={() => {}} /> : null}
+        {activeCard ? (
+          <CardComponent card={activeCard} onOpen={() => {}} />
+        ) : null}
         {activeColumn ? (
           <div className="min-w-[260px] max-w-[260px] bg-column rounded-xl p-3 opacity-90">
-            <h3 className="text-surface font-medium text-sm">{activeColumn.title}</h3>
+            <h3 className="text-surface font-medium text-sm">
+              {activeColumn.title}
+            </h3>
           </div>
         ) : null}
       </DragOverlay>
@@ -269,9 +319,10 @@ export default function Board({ boardId }: Props) {
           onUpdateTitle={handleUpdateCardTitle}
           onUpdateDescription={handleUpdateCardDescription}
           onUpdateLabel={handleUpdateCardLabel}
+          onUpdateDueDate={handleUpdateCardDueDate}
           onDelete={handleDeleteCard}
         />
       )}
     </DndContext>
-  )
+  );
 }

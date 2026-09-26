@@ -10,6 +10,7 @@ type Props = {
   onUpdateTitle: (cardId: string, title: string) => void
   onUpdateDescription: (cardId: string, description: string) => void
   onUpdateLabel: (cardId: string, labelColor: string | null) => void
+  onUpdateDueDate: (cardId: string, dueDate: string | null) => void
   onDelete: (cardId: string) => void
 }
 
@@ -19,10 +20,12 @@ export default function CardModal({
   onUpdateTitle,
   onUpdateDescription,
   onUpdateLabel,
+  onUpdateDueDate,
   onDelete,
 }: Props) {
   const [title, setTitle] = useState(card.title)
   const [description, setDescription] = useState(card.description ?? '')
+  const [dueDate, setDueDate] = useState(card.due_date ?? '')
 
   function handleSave() {
     const trimmedTitle = title.trim()
@@ -32,11 +35,13 @@ export default function CardModal({
     if (description !== (card.description ?? '')) {
       onUpdateDescription(card.id, description)
     }
+    if (dueDate !== (card.due_date ?? '')) {
+      onUpdateDueDate(card.id, dueDate || null)
+    }
     onClose()
   }
 
   function handleLabelClick(color: string) {
-    // اگه رنگ فعلی رو دوباره بزنی، لیبل برداشته می‌شه
     onUpdateLabel(card.id, card.label_color === color ? null : color)
   }
 
@@ -70,6 +75,24 @@ export default function CardModal({
               }}
             />
           ))}
+        </div>
+
+        <label className="text-surface/60 text-xs block mb-1">تاریخ سررسید</label>
+        <div className="flex gap-2 mb-3">
+          <input
+            type="date"
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
+            className="flex-1 bg-card text-surface text-sm rounded-md p-2 outline-none border border-transparent focus:border-accent"
+          />
+          {dueDate && (
+            <button
+              onClick={() => setDueDate('')}
+              className="text-accent text-xs px-2"
+            >
+              حذف تاریخ
+            </button>
+          )}
         </div>
 
         <label className="text-surface/60 text-xs block mb-1">توضیحات</label>

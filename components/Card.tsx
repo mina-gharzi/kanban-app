@@ -3,6 +3,7 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import type { Card as CardType } from '@/lib/supabase/queries'
+import { getDueDateStatus, formatDueDate } from '@/lib/dueDate'
 
 type Props = {
   card: CardType
@@ -18,6 +19,8 @@ export default function Card({ card, onOpen }: Props) {
     transition,
     opacity: isDragging ? 0.5 : 1,
   }
+
+  const dueDateStatus = getDueDateStatus(card.due_date)
 
   return (
     <div
@@ -37,6 +40,19 @@ export default function Card({ card, onOpen }: Props) {
           <p className="text-xs text-surface/60 mt-1 line-clamp-2">
             {card.description}
           </p>
+        )}
+        {card.due_date && (
+          <span
+            className={`inline-block text-[11px] mt-2 px-2 py-0.5 rounded ${
+              dueDateStatus === 'overdue'
+                ? 'bg-accent/20 text-accent'
+                : dueDateStatus === 'soon'
+                ? 'bg-yellow-500/20 text-yellow-500'
+                : 'bg-surface/10 text-surface/60'
+            }`}
+          >
+            {formatDueDate(card.due_date)}
+          </span>
         )}
       </div>
     </div>
