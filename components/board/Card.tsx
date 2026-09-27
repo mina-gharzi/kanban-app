@@ -42,7 +42,12 @@ export default function Card({ card, onOpen }: Props) {
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: card.id, disabled: isPending })
+  } = useSortable({
+    id: card.id,
+    disabled: isPending,
+    // پیش‌فرض dnd-kit انگلیسی است («draggable»). اپ فارسی است.
+    attributes: { roleDescription: 'قابل جابه‌جایی' },
+  })
 
   const dueDateStatus = getDueDateStatus(card.due_date)
   const hasDescription = Boolean(card.description?.trim())
@@ -52,10 +57,36 @@ export default function Card({ card, onOpen }: Props) {
     onOpen?.(card.id)
   }
 
+  /**
+   * کارت دو نقش دارد: هم «دکمه‌ی بازکردن» است و هم «مورد قابل جابه‌جایی».
+   * نقشه‌ی کلیدها طوری چیده شده که این دو با هم قفل نشوند:
+   *
+   *   Enter  → باز کردن کارت (اینجا مصرف می‌شود و به سنسور نمی‌رسد)
+   *   Space  → برداشتن/رهاکردن (به سنسور صفحه‌کلید می‌رسد)
+   *   Escape → لغو جابه‌جایی (سنسور خودش مدیریت می‌کند)
+   *
+   * نکته‌ی مهم: `listeners` شامل `onKeyDown` سنسور است و قبلاً با
+   * `onKeyDown` این کامپوننت بی‌صدا جایگزین می‌شد، یعنی جابه‌جایی با
+   * صفحه‌کلید اصلاً کار نمی‌کرد. اینجا فقط کلیدهایی را که سنسور باید
+   * ببیند به آن می‌فرستیم.
+   */
   function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
-    if (event.key !== 'Enter' && event.key !== ' ') return
-    event.preventDefault()
-    open()
+    // فقط خودِ کارت؛ نه یک کنترل تودرتو (ورودی، دکمه، …)
+    if (event.target !== event.currentTarget) return
+
+    // حین drag، کنترل کامل با سنسور است (حرکت/رهاکردن/لغو). دست زدن
+    // به رویداد می‌توانست drop را بشکند.
+    if (isDragging) return
+
+    if (event.key === 'Enter') {
+      event.preventDefault()
+      open()
+      return
+    }
+
+    // Space و بقیه‌ی کلیدها به سنسور می‌رسند تا drag شروع شود؛ خودِ
+    // سنسور فقط روی کلیدهای `start` واکنش می‌دهد.
+    listeners?.onKeyDown?.(event, card.id)
   }
 
   return (
@@ -69,9 +100,7 @@ export default function Card({ card, onOpen }: Props) {
       role="button"
       tabIndex={0}
       aria-busy={isPending}
-      aria-label={
-        isPending ? `${card.title} (در حال ذخیره)` : `باز کردن کارت ${card.title}`
-      }
+      aria-label={isPending ? `${card.title} (در حال ذخیره)` : `کارت ${card.title}`}
       className={[
         'group relative rounded-lg border border-border bg-surface p-3',
         'transition-[border-color,box-shadow,background-color] duration-150',

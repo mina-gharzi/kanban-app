@@ -1,13 +1,19 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import {
+  KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
+  type Announcements,
+  type DragCancelEvent,
   type DragEndEvent,
   type DragStartEvent,
+  type ScreenReaderInstructions,
+  type UniqueIdentifier,
 } from '@dnd-kit/core'
+import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { planCardMove, planColumnMove } from '@/lib/board/layout'
 import { isTemporaryId } from '@/lib/board/optimistic'
 import type {
@@ -30,12 +36,17 @@ export type BoardDragAndDrop = {
   activeColumn: Column | null
   handleDragStart: (event: DragStartEvent) => void
   handleDragEnd: (event: DragEndEvent) => void
+  handleDragCancel: (event: DragCancelEvent) => void
+  /** متن راهنما و اعلان‌های فارسی برای Screen Reader */
+  screenReaderInstructions: ScreenReaderInstructions
+  announcements: Announcements
 }
 
 /**
- * این هوک فقط دو چیز را نگه می‌دارد:
+ * این هوک فقط چند چیز را نگه می‌دارد:
  * ۱) state موقتِ drag (کدام کارت/ستون در حال کشیده شدن است) — Client state
- * ۲) تصمیم «چه چیزی کجا بنشیند» که با توابع pure محاسبه می‌شود
+ * ۲) سنسورها؛ Pointer برای ماوس/لمس و Keyboard برای صفحه‌کلید
+ * ۳) تصمیم «چه چیزی کجا بنشیند» که با توابع pure محاسبه می‌شود
  *    و نتیجه‌اش به‌صورت آرایه‌ی update به لایه‌ی mutation داده می‌شود.
  */
 export function useBoardDragAndDrop({
@@ -48,9 +59,62 @@ export function useBoardDragAndDrop({
   const [activeColumn, setActiveColumn] = useState<Column | null>(null)
 
   const sensors = useSensors(
+    // ماوس و لمس: بدون تغییر رفتار قبلی (فاصله‌ی ۵ پیکسل تا کلیک با
+    // drag اشتباه نشود).
     useSensor(PointerSensor, {
       activationConstraint: { distance: 5 },
+    }),
+    // صفحه‌کلید: `sortableKeyboardCoordinates` به‌جای جابه‌جایی ۲۵
+    // پیکسلی، بین نزدیک‌ترین droppable معتبر (کارت/ستون قابل‌دید) می‌رود.
+    //
+    // `keyboardCodes` عمداً دستی است تا کلیدهای کار با «باز کردن کارت»
+    // قفل نکنند: Space برداشتن/رهاکردن، Enter بازکردن کارت و Escape لغو.
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+      keyboardCodes: {
+        start: ['Space'],
+        cancel: ['Escape'],
+        end: ['Space', 'Enter', 'Tab'],
+      },
     })
+  )
+
+  // نام قابل‌خواندن هر id، تا اعلان‌های Screen Reader به‌جای UUID
+  // («Picked up draggable item 3f9c…») عنوان واقعی کارت/ستون را بگویند.
+  const itemNames = useMemo(() => {
+    const names = new Map<string, string>()
+    for (const card of cards) names.set(card.id, `کارت «${card.title}»`)
+    for (const column of columns) names.set(column.id, `ستون «${column.title}»`)
+    return names
+  }, [cards, columns])
+
+  const describe = useCallback(
+    (id: UniqueIdentifier) => itemNames.get(String(id)) ?? 'مورد',
+    [itemNames]
+  )
+
+  const screenReaderInstructions = useMemo<ScreenReaderInstructions>(
+    () => ({
+      draggable:
+        'برای برداشتن این کارت یا ستون، کلید فاصله را بزنید. در حین جابه‌جایی از کلیدهای جهت‌دار استفاده کنید و با فاصله یا Enter آن را رها کنید. برای باز کردن کارت Enter بزنید و برای لغو جابه‌جایی Escape.',
+    }),
+    []
+  )
+
+  const announcements = useMemo<Announcements>(
+    () => ({
+      onDragStart: ({ active }) => `${describe(active.id)} برداشته شد.`,
+      onDragOver: ({ active, over }) =>
+        over
+          ? `${describe(active.id)} روی ${describe(over.id)} قرار گرفت.`
+          : `${describe(active.id)} دیگر روی ناحیه‌ی معتبری نیست.`,
+      onDragEnd: ({ active, over }) =>
+        over
+          ? `${describe(active.id)} در جای ${describe(over.id)} رها شد.`
+          : `${describe(active.id)} رها شد.`,
+      onDragCancel: ({ active }) => `جابه‌جایی ${describe(active.id)} لغو شد.`,
+    }),
+    [describe]
   )
 
   const handleDragStart = useCallback(
@@ -97,11 +161,22 @@ export function useBoardDragAndDrop({
     [cards, columns, onCardMove, onColumnMove]
   )
 
+  const handleDragCancel = useCallback(() => {
+    // rollback لازم نیست: بهینه‌سازی خوش‌بینانه در `onDragStart` اعمال
+    // نمی‌شود، بلکه داخل mutation و فقط هنگام drop رخ می‌دهد. پس لغو
+    // یعنی فقط برداشتن DragOverlay.
+    setActiveCard(null)
+    setActiveColumn(null)
+  }, [])
+
   return {
     sensors,
     activeCard,
     activeColumn,
     handleDragStart,
     handleDragEnd,
+    handleDragCancel,
+    screenReaderInstructions,
+    announcements,
   }
 }

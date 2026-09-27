@@ -5,6 +5,10 @@ export type BoardFilter = {
   labelColor: string | null
 }
 
+/** نام پارامترهای URL؛ کوتاه تا لینک اشتراکی خوانا بماند. */
+export const SEARCH_PARAM = 'q'
+export const LABEL_PARAM = 'label'
+
 export function isFilterActive(filter: BoardFilter): boolean {
   return filter.searchQuery.trim() !== '' || filter.labelColor !== null
 }
@@ -31,4 +35,36 @@ export function getVisibleCardIds(
     if (matchesCardFilter(card, filter)) visible.add(card.id)
   }
   return visible
+}
+
+/**
+ * خواندن فیلتر از query string لینک.
+ *
+ * لیبل خام برگردانده می‌شود؛ اعتبارسنجی آن با `isKnownLabelColor` است
+ * که کنار خودِ لیست لیبل‌ها زندگی می‌کند (این ماژول عمداً هیچ
+ * وابستگی زمان‌اجرا ندارد تا pure و قابل تست بماند).
+ */
+export function parseFilterParams(params: URLSearchParams): BoardFilter {
+  return {
+    searchQuery: params.get(SEARCH_PARAM) ?? '',
+    labelColor: params.get(LABEL_PARAM),
+  }
+}
+
+/**
+ * نوشتن فیلتر روی query string، بدون دست‌زدن به پارامترهای دیگر URL.
+ * فیلتر خالی پارامتر نمی‌سازد تا لینک بی‌صدا بماند: `/board/x` نه
+ * `/board/x?q=&label=`.
+ */
+export function writeFilterParams(
+  params: URLSearchParams,
+  filter: BoardFilter,
+): URLSearchParams {
+  const next = new URLSearchParams(params)
+  const query = filter.searchQuery.trim()
+  if (query === '') next.delete(SEARCH_PARAM)
+  else next.set(SEARCH_PARAM, filter.searchQuery)
+  if (filter.labelColor === null) next.delete(LABEL_PARAM)
+  else next.set(LABEL_PARAM, filter.labelColor)
+  return next
 }

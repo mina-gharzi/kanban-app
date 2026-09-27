@@ -1,9 +1,13 @@
 'use client'
 
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import AppHeader from './AppHeader'
+import { useFocusTrap } from '@/hooks/useFocusTrap'
 import { XIcon } from '@/components/ui/icons'
 import { IconButton } from '@/components/ui/IconButton'
+
+/** هم‌تراز با breakpoint `lg` در Tailwind؛ جابه‌جایی drawer در این نقطه بی‌معنی است. */
+const DESKTOP_QUERY = '(min-width: 1024px)'
 
 type SidebarRender = (props: { onNavigate: () => void }) => ReactNode
 
@@ -27,16 +31,32 @@ type Props = {
  */
 export default function AppShell({ sidebar, headerMeta, children }: Props) {
   const [isNavOpen, setIsNavOpen] = useState(false)
+  const drawerId = useId()
+  const drawerRef = useRef<HTMLElement>(null)
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
 
-  // بستن drawer با Escape
+  // Escape و focus trap داخل useFocusTrap مدیریت می‌شود تا با Modalهای
+  // تودرتو تداخل نکند (لایه‌ی بالاتر اولویت دارد).
+  useFocusTrap({
+    active: isNavOpen && Boolean(sidebar),
+    containerRef: drawerRef,
+    initialFocusRef: closeButtonRef,
+    onEscape: () => setIsNavOpen(false),
+    returnFocus: true,
+    lockScroll: true,
+  })
+
+  // اگر کاربر drawer را باز کند و بعد عرض را به دسکتاپ ببرد، drawer با
+  // `lg:hidden` نامرئی می‌شود ولی باز می‌ماند: فوکوس داخل یک ظرف
+  // نامرئی گیر می‌کند و trigger هم دیده نمی‌شود. اینجا بسته می‌شود.
   useEffect(() => {
-    if (!isNavOpen) return
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') setIsNavOpen(false)
+    const media = window.matchMedia(DESKTOP_QUERY)
+    function handleChange(event: MediaQueryListEvent) {
+      if (event.matches) setIsNavOpen(false)
     }
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [isNavOpen])
+    media.addEventListener('change', handleChange)
+    return () => media.removeEventListener('change', handleChange)
+  }, [])
 
   const closeNav = () => setIsNavOpen(false)
 
@@ -47,18 +67,21 @@ export default function AppShell({ sidebar, headerMeta, children }: Props) {
           sidebar ? () => setIsNavOpen((open) => !open) : undefined
         }
         isNavOpen={isNavOpen}
+        navControlsId={sidebar ? drawerId : undefined}
         meta={headerMeta}
       />
 
       <div className="flex min-h-0 flex-1">
         {sidebar && (
           <>
-            {/* ثابت در دسکتاپ */}
+            {/* ثابت در دسکتاپ. `hidden` یعنی display:none، پس در موبایل
+                از درخت دسترس‌پذیری و از ترتیب Tab حذف می‌شود. */}
             <aside className="hidden w-64 shrink-0 overflow-y-auto border-e border-border bg-surface lg:block">
               {sidebar({ onNavigate: () => {} })}
             </aside>
 
-            {/* drawer در موبایل و تبلت */}
+            {/* drawer در موبایل و تبلت. تمام‌صفحه و focus-trapping است،
+                پس از نظر رفتار یک dialog modal است. */}
             {isNavOpen && (
               <>
                 <div
@@ -67,10 +90,14 @@ export default function AppShell({ sidebar, headerMeta, children }: Props) {
                   aria-hidden="true"
                 />
                 <aside
+                  ref={drawerRef}
+                  id={drawerId}
+                  role="dialog"
+                  aria-modal="true"
                   aria-label="فهرست بوردها"
-                  className="fixed inset-y-0 start-0 z-50 w-72 max-w-[85vw] overflow-y-auto border-e border-border bg-surface shadow-lg lg:hidden"
+                  className="fixed inset-y-0 start-0 z-50 w-72 max-w-[85vw] overflow-y-auto border-e border-border bg-surface shadow-lg outline-none lg:hidden"
                 >
-                  <SidebarHeader onClose={closeNav} />
+                  <SidebarHeader onClose={closeNav} closeButtonRef={closeButtonRef} />
                   {sidebar({ onNavigate: closeNav })}
                 </aside>
               </>
@@ -86,11 +113,22 @@ export default function AppShell({ sidebar, headerMeta, children }: Props) {
   )
 }
 
-function SidebarHeader({ onClose }: { onClose: () => void }) {
+function SidebarHeader({
+  onClose,
+  closeButtonRef,
+}: {
+  onClose: () => void
+  closeButtonRef: React.Ref<HTMLButtonElement>
+}) {
   return (
     <div className="flex h-14 items-center justify-between border-b border-border px-4 lg:hidden">
       <span className="text-[15px] font-semibold text-text">بوردها</span>
-      <IconButton label="بستن فهرست" size="sm" onClick={onClose}>
+      <IconButton
+        ref={closeButtonRef}
+        label="بستن فهرست"
+        size="sm"
+        onClick={onClose}
+      >
         <XIcon size={17} />
       </IconButton>
     </div>

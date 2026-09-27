@@ -35,13 +35,21 @@ export default function BoardContent({
   columnMutations,
   onOpenCard,
 }: Props) {
-  const { sensors, activeCard, activeColumn, handleDragStart, handleDragEnd } =
-    useBoardDragAndDrop({
-      columns,
-      cards,
-      onCardMove: cardMutations.moveCard,
-      onColumnMove: columnMutations.moveColumn,
-    })
+  const {
+    sensors,
+    activeCard,
+    activeColumn,
+    handleDragStart,
+    handleDragEnd,
+    handleDragCancel,
+    screenReaderInstructions,
+    announcements,
+  } = useBoardDragAndDrop({
+    columns,
+    cards,
+    onCardMove: cardMutations.moveCard,
+    onColumnMove: columnMutations.moveColumn,
+  })
 
   const columnIds = useMemo(
     () => columns.map((column) => column.id),
@@ -82,6 +90,14 @@ export default function BoardContent({
       collisionDetection={closestCorners}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
+      onDragCancel={handleDragCancel}
+      // متن راهنما و اعلان‌ها به‌جای انگلیسی/UUID پیش‌فرض dnd-kit فارسی
+      // می‌شوند. همین‌جا به‌صورت `aria-describedby` به هر کارت و ستون
+      // می‌چسبد.
+      accessibility={{
+        screenReaderInstructions,
+        announcements,
+      }}
     >
       {/* اسکرول افقی روی خودِ بورد: هدر و ابزار ثابت می‌مانند و فقط
           ستون‌ها می‌لغزند. `overscroll-x-contain` جلوی زنجیره‌ی اسکرول

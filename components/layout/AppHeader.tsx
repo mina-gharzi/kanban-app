@@ -11,6 +11,8 @@ type Props = {
   meta?: React.ReactNode
   onToggleNav?: () => void
   isNavOpen?: boolean
+  /** id ناحیه‌ای که این trigger کنترل می‌کند (drawer موبایل) */
+  navControlsId?: string
 }
 
 /**
@@ -21,7 +23,12 @@ type Props = {
  * عمداً شلوغ نیست: Search و Notification در این اپ وجود ندارند و
  * ساختن UI جعلی برای‌شان ممنوع است.
  */
-export default function AppHeader({ meta, onToggleNav, isNavOpen = false }: Props) {
+export default function AppHeader({
+  meta,
+  onToggleNav,
+  isNavOpen = false,
+  navControlsId,
+}: Props) {
   return (
     <header className="z-30 h-14 shrink-0 border-b border-border bg-surface/85 backdrop-blur-md">
       <div className="flex h-full items-center gap-3 px-4 sm:px-6">
@@ -30,6 +37,7 @@ export default function AppHeader({ meta, onToggleNav, isNavOpen = false }: Prop
             label={isNavOpen ? 'بستن فهرست' : 'باز کردن فهرست'}
             onClick={onToggleNav}
             aria-expanded={isNavOpen}
+            aria-controls={navControlsId}
             className="-ms-1.5 lg:hidden"
           >
             <MenuIcon size={18} />

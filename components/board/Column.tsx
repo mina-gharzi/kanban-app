@@ -53,6 +53,7 @@ function Column({
     id: column.id,
     data: { type: 'column' },
     disabled: isPending,
+    attributes: { roleDescription: 'قابل جابه‌جایی' },
   })
 
   const style = {
@@ -60,10 +61,23 @@ function Column({
     transition,
   }
 
+  // SortableContext باید ترتیب کامل را بداند تا محاسبه‌ی جای جدید در
+  // layout.ts روی داده‌ی واقعی انجام شود، نه روی نمای فیلترشده.
   const cardIds = useMemo(() => cards.map((card) => card.id), [cards])
 
-  const isFilteredOut =
-    visibleCardIds !== null && cards.every((card) => !visibleCardIds.has(card.id))
+  // کارت‌های خارج از فیلتر واقعاً از درخت رندر حذف می‌شوند. قبلاً با
+  // `display: none` پنهان می‌ماندند: هم در SortableContext و droppableها
+  // باقی می‌ماندند (هدف جابه‌جایی نامرئی!) و هم شمارنده‌ی سربرگ
+  // تعداد کل را نشان می‌داد نه تعداد نتیجه‌ی فیلتر.
+  const visibleCards = useMemo(
+    () =>
+      visibleCardIds === null
+        ? cards
+        : cards.filter((card) => visibleCardIds.has(card.id)),
+    [cards, visibleCardIds]
+  )
+
+  const isFilteredOut = cards.length > 0 && visibleCards.length === 0
 
   return (
     <div className="flex w-72 shrink-0 flex-col">
@@ -86,7 +100,7 @@ function Column({
       >
         <ColumnHeader
           column={column}
-          cardCount={cards.length}
+          cardCount={visibleCards.length}
           isPending={isPending}
           dragHandleProps={{ ...attributes, ...listeners }}
           onRename={(title) =>
@@ -97,17 +111,9 @@ function Column({
 
         <div className="flex min-h-16 flex-1 flex-col gap-2">
           <SortableContext items={cardIds} strategy={verticalListSortingStrategy}>
-            {cards.map((card) => {
-              const isVisible = visibleCardIds === null || visibleCardIds.has(card.id)
-              return (
-                <div
-                  key={card.id}
-                  style={{ display: isVisible ? 'block' : 'none' }}
-                >
-                  <CardComponent card={card} onOpen={onOpenCard} />
-                </div>
-              )
-            })}
+            {visibleCards.map((card) => (
+              <CardComponent key={card.id} card={card} onOpen={onOpenCard} />
+            ))}
           </SortableContext>
 
           {/* جای خالی: هم بورد تازه را صمیمی می‌کند، هم هدف Drop را
