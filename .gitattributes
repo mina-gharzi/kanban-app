@@ -1,0 +1,40 @@
+# نرمال‌سازی Line Ending در کل مخزن.
+#
+# چرا این فایل لازم است:
+#
+# بدون این فایل، Line Ending به تنظیمات محلی هر توسعه‌دهنده وابسته است
+# (`core.autocrlf` در ویندوز true است). نتیجه:
+#   * `git diff` پر از تغییرات کاملِ بی‌معنا می‌شود، در حالی که فقط
+#     CRLF↔LF عوض شده است.
+#   * Formatterها (Prettier/ESLint --fix) خروجی متفاوت تولید می‌کنند.
+#   * اسکریپت‌هایی که CRLF را نمی‌پذیرند (مثل heredoc در برخی CIها)
+#     به‌شکل تصادفی و وابسته به ماشین شکست می‌خورند.
+#
+# تصمیم: **LF برای همه‌ی فایل‌های متنی**.
+#
+# `text=auto` یعنی Git خودش تشخیص می‌دهد کدام فایل متنی است و فقط
+# همان‌ها را نرمال می‌کند؛ `eol=lf` تضمین می‌کند چک‌اوت هم همیشه LF
+# بدهد، حتی روی ویندوز. این دو با هم لازم‌اند: بدون `eol=lf`،
+# `core.autocrlf=true` در ویندوز دوباره CRLF می‌نویسد.
+#
+# نتیجه در index: فایل‌ها LF ذخیره می‌شوند (بدون CR)، پس ریپازیتوری
+# مستقل از سیستم‌عامل می‌شود.
+
+* text=auto eol=lf
+
+# باینری‌ها نباید نه ترجمه شوند و نه Line Ending بگیرند.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.mp4 binary
+*.webm binary
