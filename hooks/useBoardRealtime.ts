@@ -1,33 +1,66 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import type { RealtimeChannel, REALTIME_SUBSCRIBE_STATES } from '@supabase/supabase-js'
+import { AppError } from '@/lib/errors/AppError'
+import { ERROR_CODES } from '@/lib/errors/errorCodes'
+import { logError } from '@/lib/errors/logError'
 import type { BoardData, Card, Column } from '@/lib/board/types'
 import { queryKeys } from '@/lib/queries/keys'
 import { supabase } from '@/lib/supabase/client'
+
+/** وضعیت اتصال realtime که UI به آن واکنش نشان می‌دهد. */
+export type RealtimeStatus = 'connecting' | 'live' | 'error'
+
+function toStatus(state: REALTIME_SUBSCRIBE_STATES): RealtimeStatus {
+  if (state === 'SUBSCRIBED') return 'live'
+  if (state === 'TIMED_OUT' || state === 'CHANNEL_ERROR' || state === 'CLOSED') {
+    return 'error'
+  }
+  return 'connecting'
+}
 
 /**
  * Realtime دیگر منبع دوم موازی نیست: هر event فقط Query Cache بورد را
  * به‌روز می‌کند و همان یک منبع، داده‌ی UI را می‌سازد.
  * ستون‌ها با filter برد محدود شده‌اند و کارت‌ها از طریق ستون‌های همین بورد
  * اعتبارسنجی می‌شوند تا رویداد بورد دیگر cache این بورد را تغییر ندهد.
+ *
+ * خطای اتصال: فقط یک‌بار در هر گذار به وضعیت خطا لاگ می‌شود و هیچ
+ * toast تکراری ساخته نمی‌شود؛ UI یک نوار «در حال اتصال دوباره» نشان می‌دهد.
  */
-export function useBoardRealtime(boardId: string) {
+export function useBoardRealtime(boardId: string): RealtimeStatus {
   const queryClient = useQueryClient()
+  const [status, setStatus] = useState<RealtimeStatus>('connecting')
+  const lastStatusRef = useRef<RealtimeStatus>('connecting')
 
   useEffect(() => {
     if (!boardId) return
 
     const boardKey = queryKeys.board(boardId)
-    const setBoardData = (
-      updater: (previous: BoardData) => BoardData
-    ): void => {
+    const setBoardData = (updater: (previous: BoardData) => BoardData): void => {
       queryClient.setQueryData<BoardData>(boardKey, (previous) =>
         previous ? updater(previous) : previous
       )
     }
 
-    const channel = supabase
+    const updateStatus = (next: RealtimeStatus, channelState: string) => {
+      if (next === lastStatusRef.current) return
+      lastStatusRef.current = next
+      if (next === 'error') {
+        logError(
+          new AppError({
+            code: ERROR_CODES.NETWORK,
+            message: `realtime channel "${channelState}"`,
+          }),
+          'board.realtime'
+        )
+      }
+      setStatus(next)
+    }
+
+    const channel: RealtimeChannel = supabase
       .channel(`board-${boardId}`)
       .on<Card>(
         'postgres_changes',
@@ -115,10 +148,15 @@ export function useBoardRealtime(boardId: string) {
           }
         }
       )
-      .subscribe()
+      .subscribe((channelState) => {
+        updateStatus(toStatus(channelState), channelState)
+      })
 
     return () => {
-      supabase.removeChannel(channel)
+      lastStatusRef.current = 'connecting'
+      void supabase.removeChannel(channel)
     }
   }, [boardId, queryClient])
+
+  return status
 }

@@ -1,17 +1,27 @@
 'use client'
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { reportError } from '@/lib/errors/reportError'
 import type { Board } from '@/lib/board/types'
-import { notifyError } from '@/lib/notifications'
+import { normalizeError } from '@/lib/errors/normalizeError'
 import { queryKeys } from '@/lib/queries/keys'
 import { createBoard, deleteBoard, getBoards } from '@/lib/supabase/queries'
 
+const EMPTY_BOARDS: Board[] = []
+
 /** لیست بوردهای کاربر (Server State). */
 export function useBoards() {
-  return useQuery({
+  const query = useQuery({
     queryKey: queryKeys.boards,
     queryFn: getBoards,
   })
+
+  return {
+    boards: query.data ?? EMPTY_BOARDS,
+    isPending: query.isPending,
+    error: query.error ? normalizeError(query.error) : null,
+    refetch: query.refetch,
+  }
 }
 
 export function useBoardMutations() {
@@ -25,7 +35,7 @@ export function useBoardMutations() {
         ...(previous ?? []),
       ])
     },
-    onError: (error) => notifyError('ساخت بورد با مشکل مواجه شد.', error),
+    onError: (error) => reportError(error, 'board.create'),
   })
 
   const remove = useMutation({
@@ -42,7 +52,7 @@ export function useBoardMutations() {
       if (context?.previous) {
         queryClient.setQueryData(queryKeys.boards, context.previous)
       }
-      notifyError('حذف بورد با مشکل مواجه شد.', error)
+      reportError(error, 'board.delete')
     },
     onSettled: (_data, _error, boardId) => {
       queryClient.removeQueries({ queryKey: queryKeys.board(boardId) })

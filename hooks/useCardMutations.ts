@@ -3,26 +3,14 @@
 import { useMemo } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { applyCardPositions } from '@/lib/board/layout'
+import { reportError } from '@/lib/errors/reportError'
 import type {
   BoardData,
   CardFieldPatch,
   CardPositionUpdate,
 } from '@/lib/board/types'
-import { notifyError } from '@/lib/notifications'
 import { queryKeys } from '@/lib/queries/keys'
 import { addCard, deleteCard, updateCard, updateManyCardPositions } from '@/lib/supabase/queries'
-
-const FIELD_LABELS: Record<keyof CardFieldPatch, string> = {
-  title: 'عنوان کارت',
-  description: 'توضیحات',
-  label_color: 'لیبل',
-  due_date: 'تاریخ سررسید',
-}
-
-function fieldLabel(patch: CardFieldPatch): string {
-  const field = Object.keys(patch)[0] as keyof CardFieldPatch | undefined
-  return field ? FIELD_LABELS[field] : 'کارت'
-}
 
 function nextPositionInColumn(
   data: BoardData | undefined,
@@ -36,6 +24,8 @@ function nextPositionInColumn(
  * Mutationهای کارت روی Query Cache بورد کار می‌کنند:
  * ساخت از پاسخ سرور کش می‌شود و بقیه به‌صورت optimistic
  * (onMutate → snapshot → update cache) اعمال می‌شوند و در خطا rollback می‌گردند.
+ *
+ * خطا دقیقاً یک‌بار در reportError گزارش می‌شود؛ UI فقط یک پیام می‌بیند.
  */
 export function useCardMutations(boardId: string) {
   const queryClient = useQueryClient()
@@ -53,7 +43,7 @@ export function useCardMutations(boardId: string) {
           : previous
       )
     },
-    onError: (error) => notifyError('افزودن کارت با مشکل مواجه شد.', error),
+    onError: (error) => reportError(error, 'card.create'),
     onSettled: () => queryClient.invalidateQueries({ queryKey: boardKey }),
   })
 
@@ -80,11 +70,11 @@ export function useCardMutations(boardId: string) {
       )
       return { previous }
     },
-    onError: (error, variables, context) => {
+    onError: (error, _variables, context) => {
       if (context?.previous) {
         queryClient.setQueryData(boardKey, context.previous)
       }
-      notifyError(`آپدیت ${fieldLabel(variables.patch)} با مشکل مواجه شد.`, error)
+      reportError(error, 'card.update')
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: boardKey }),
   })
@@ -105,7 +95,7 @@ export function useCardMutations(boardId: string) {
       if (context?.previous) {
         queryClient.setQueryData(boardKey, context.previous)
       }
-      notifyError('حذف کارت با مشکل مواجه شد.', error)
+      reportError(error, 'card.delete')
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: boardKey }),
   })
@@ -127,7 +117,7 @@ export function useCardMutations(boardId: string) {
       if (context?.previous) {
         queryClient.setQueryData(boardKey, context.previous)
       }
-      notifyError('جابجایی کارت با مشکل مواجه شد.', error)
+      reportError(error, 'card.move')
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: boardKey }),
   })

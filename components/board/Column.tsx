@@ -7,6 +7,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import type { CardMutations } from '@/hooks/useCardMutations'
 import type { ColumnMutations } from '@/hooks/useColumnMutations'
+import { validateTitle } from '@/lib/board/validation'
 import type { Card, Column as ColumnType } from '@/lib/board/types'
 import AddCardForm from './AddCardForm'
 import CardComponent from './Card'
@@ -47,16 +48,28 @@ function Column({
 
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [draftTitle, setDraftTitle] = useState(column.title)
+  const [titleError, setTitleError] = useState<string | null>(null)
 
   const cardIds = useMemo(() => cards.map((card) => card.id), [cards])
 
   function saveTitle() {
-    const trimmed = draftTitle.trim()
-    if (trimmed && trimmed !== column.title) {
-      columnMutations.updateColumnTitle({ columnId: column.id, title: trimmed })
-    } else {
-      setDraftTitle(column.title)
+    // خطای اعتبارسنجی کنار فیلد می‌ماند و حالت ویرایش بسته نمی‌شود
+    const validationError = validateTitle(draftTitle, 'column')
+    if (validationError) {
+      setTitleError(validationError.userMessage)
+      return
     }
+    const trimmed = draftTitle.trim()
+    if (trimmed !== column.title) {
+      columnMutations.updateColumnTitle({ columnId: column.id, title: trimmed })
+    }
+    setTitleError(null)
+    setIsEditingTitle(false)
+  }
+
+  function cancelTitleEdit() {
+    setTitleError(null)
+    setDraftTitle(column.title)
     setIsEditingTitle(false)
   }
 
@@ -81,21 +94,34 @@ function Column({
             ⠿
           </span>
           {isEditingTitle ? (
-            <input
-              autoFocus
-              value={draftTitle}
-              onChange={(e) => setDraftTitle(e.target.value)}
-              onBlur={saveTitle}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') saveTitle()
-                if (e.key === 'Escape') {
-                  setDraftTitle(column.title)
-                  setIsEditingTitle(false)
-                }
-              }}
-              aria-label="عنوان ستون"
-              className="bg-surface/10 text-surface text-sm rounded px-1 outline-none border border-accent min-w-0"
-            />
+            <div className="flex-1 min-w-0">
+              <input
+                autoFocus
+                value={draftTitle}
+                onChange={(e) => {
+                  setDraftTitle(e.target.value)
+                  setTitleError(null)
+                }}
+                onBlur={saveTitle}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') saveTitle()
+                  if (e.key === 'Escape') cancelTitleEdit()
+                }}
+                aria-label="عنوان ستون"
+                aria-invalid={titleError !== null}
+                aria-describedby={titleError ? 'column-title-error' : undefined}
+                className="w-full bg-surface/10 text-surface text-sm rounded px-1 outline-none border border-accent"
+              />
+              {titleError && (
+                <p
+                  id="column-title-error"
+                  role="alert"
+                  className="text-accent text-xs mt-1"
+                >
+                  {titleError}
+                </p>
+              )}
+            </div>
           ) : (
             <h3
               className="text-surface font-medium text-sm truncate"

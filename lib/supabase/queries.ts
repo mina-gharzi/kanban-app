@@ -1,4 +1,7 @@
 import { supabase } from './client'
+import { AppError } from '@/lib/errors/AppError'
+import { ERROR_CODES } from '@/lib/errors/errorCodes'
+import { normalizeError } from '@/lib/errors/normalizeError'
 import type {
   Board,
   BoardData,
@@ -9,6 +12,11 @@ import type {
   ColumnPositionUpdate,
 } from '@/lib/board/types'
 
+/**
+ * مرز data-access: خطای خام Supabase در همین لایه به AppError تبدیل
+ * می‌شود، بنابراین هیچ کامپوننتی خطای Supabase را نمی‌بیند.
+ */
+
 export async function getBoardData(boardId: string): Promise<BoardData> {
   const { data: columns, error: colError } = await supabase
     .from('columns')
@@ -16,7 +24,7 @@ export async function getBoardData(boardId: string): Promise<BoardData> {
     .eq('board_id', boardId)
     .order('position')
 
-  if (colError) throw colError
+  if (colError) throw normalizeError(colError)
   if (!columns || columns.length === 0) return { columns: [], cards: [] }
 
   const columnIds = columns.map((c) => c.id)
@@ -27,7 +35,7 @@ export async function getBoardData(boardId: string): Promise<BoardData> {
     .in('column_id', columnIds)
     .order('position')
 
-  if (cardError) throw cardError
+  if (cardError) throw normalizeError(cardError)
 
   return { columns: columns as Column[], cards: (cards ?? []) as Card[] }
 }
@@ -38,28 +46,33 @@ export async function getBoards(): Promise<Board[]> {
     .select('*')
     .order('created_at', { ascending: false })
 
-  if (error) throw error
+  if (error) throw normalizeError(error)
   return (data ?? []) as Board[]
 }
 
 export async function createBoard(title: string): Promise<Board> {
-  const { data: userData } = await supabase.auth.getUser()
-  const userId = userData.user?.id
-  if (!userId) throw new Error('کاربر لاگین نکرده است.')
+  const { data: userData, error: userError } = await supabase.auth.getUser()
+  if (userError) throw normalizeError(userError)
+  if (!userData.user) {
+    throw new AppError({
+      code: ERROR_CODES.AUTHENTICATION,
+      message: 'createBoard requires an authenticated user',
+    })
+  }
 
   const { data, error } = await supabase
     .from('boards')
-    .insert({ title, created_by: userId })
+    .insert({ title, created_by: userData.user.id })
     .select()
     .single()
 
-  if (error) throw error
+  if (error) throw normalizeError(error)
   return data as Board
 }
 
 export async function deleteBoard(boardId: string) {
   const { error } = await supabase.from('boards').delete().eq('id', boardId)
-  if (error) throw error
+  if (error) throw normalizeError(error)
 }
 
 export async function addCard(
@@ -73,13 +86,13 @@ export async function addCard(
     .select()
     .single()
 
-  if (error) throw error
+  if (error) throw normalizeError(error)
   return data as Card
 }
 
 export async function deleteCard(cardId: string) {
   const { error } = await supabase.from('cards').delete().eq('id', cardId)
-  if (error) throw error
+  if (error) throw normalizeError(error)
 }
 
 /** ویرایش فیلدهای کارت (عنوان، توضیحات، لیبل، تاریخ سررسید) در یک درخواست. */
@@ -88,7 +101,7 @@ export async function updateCard(cardId: string, patch: CardFieldPatch) {
     .from('cards')
     .update(patch)
     .eq('id', cardId)
-  if (error) throw error
+  if (error) throw normalizeError(error)
 }
 
 /** جابه‌جایی گروهی کارت‌ها؛ در صورت خطا throw می‌کند تا لایه UI بتواند rollback کند. */
@@ -102,7 +115,7 @@ export async function updateManyCardPositions(updates: CardPositionUpdate[]) {
     )
   )
   const failed = results.find((result) => result.error)
-  if (failed?.error) throw failed.error
+  if (failed?.error) throw normalizeError(failed.error)
 }
 
 export async function addColumn(
@@ -116,13 +129,13 @@ export async function addColumn(
     .select()
     .single()
 
-  if (error) throw error
+  if (error) throw normalizeError(error)
   return data as Column
 }
 
 export async function deleteColumn(columnId: string) {
   const { error } = await supabase.from('columns').delete().eq('id', columnId)
-  if (error) throw error
+  if (error) throw normalizeError(error)
 }
 
 export async function updateColumnTitle(columnId: string, title: string) {
@@ -130,7 +143,7 @@ export async function updateColumnTitle(columnId: string, title: string) {
     .from('columns')
     .update({ title })
     .eq('id', columnId)
-  if (error) throw error
+  if (error) throw normalizeError(error)
 }
 
 /** جابه‌جایی گروهی ستون‌ها؛ در صورت خطا throw می‌کند تا لایه UI بتواند rollback کند. */
@@ -141,5 +154,5 @@ export async function updateColumnPositions(updates: ColumnPositionUpdate[]) {
     )
   )
   const failed = results.find((result) => result.error)
-  if (failed?.error) throw failed.error
+  if (failed?.error) throw normalizeError(failed.error)
 }

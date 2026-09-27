@@ -3,8 +3,8 @@
 import { useMemo } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { applyColumnPositions } from '@/lib/board/layout'
+import { reportError } from '@/lib/errors/reportError'
 import type { BoardData, ColumnPositionUpdate } from '@/lib/board/types'
-import { notifyError } from '@/lib/notifications'
 import { queryKeys } from '@/lib/queries/keys'
 import {
   addColumn,
@@ -33,7 +33,7 @@ export function useColumnMutations(boardId: string) {
           : previous
       )
     },
-    onError: (error) => notifyError('افزودن ستون با مشکل مواجه شد.', error),
+    onError: (error) => reportError(error, 'column.create'),
     onSettled: () => queryClient.invalidateQueries({ queryKey: boardKey }),
   })
 
@@ -64,7 +64,7 @@ export function useColumnMutations(boardId: string) {
       if (context?.previous) {
         queryClient.setQueryData(boardKey, context.previous)
       }
-      notifyError('آپدیت عنوان ستون با مشکل مواجه شد.', error)
+      reportError(error, 'column.update')
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: boardKey }),
   })
@@ -88,7 +88,7 @@ export function useColumnMutations(boardId: string) {
       if (context?.previous) {
         queryClient.setQueryData(boardKey, context.previous)
       }
-      notifyError('حذف ستون با مشکل مواجه شد.', error)
+      reportError(error, 'column.delete')
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: boardKey }),
   })
@@ -110,7 +110,7 @@ export function useColumnMutations(boardId: string) {
       if (context?.previous) {
         queryClient.setQueryData(boardKey, context.previous)
       }
-      notifyError('جابجایی ستون با مشکل مواجه شد.', error)
+      reportError(error, 'column.move')
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: boardKey }),
   })

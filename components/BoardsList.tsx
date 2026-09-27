@@ -3,20 +3,21 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import ErrorState from "@/components/ErrorState";
+import { useAuthMutations } from "@/hooks/useAuthMutations";
 import { useBoardMutations, useBoards } from "@/hooks/useBoards";
-import { signOut } from "@/lib/supabase/auth";
 
 export default function BoardsList() {
   const router = useRouter();
-  const { data: boards, isPending, isError } = useBoards();
+  const { boards, isPending, error, refetch } = useBoards();
   const { createBoard, deleteBoard } = useBoardMutations();
+  const { signOut } = useAuthMutations();
 
   // Client state: فقط عنوان بورد در حال تایپ
   const [newTitle, setNewTitle] = useState("");
 
-  async function handleSignOut() {
-    await signOut();
-    router.push("/login");
+  function handleSignOut() {
+    signOut(undefined, { onSuccess: () => router.push("/login") });
   }
 
   function handleCreate(e: React.FormEvent) {
@@ -57,8 +58,8 @@ export default function BoardsList() {
 
       {isPending ? (
         <p className="text-column/60">در حال بارگذاری...</p>
-      ) : isError ? (
-        <p className="text-accent">دریافت لیست بوردها با مشکل مواجه شد.</p>
+      ) : error ? (
+        <ErrorState error={error} onRetry={refetch} />
       ) : boards.length === 0 ? (
         <p className="text-column/60">هنوز بوردی نساختی.</p>
       ) : (

@@ -3,29 +3,21 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { signIn } from '@/lib/supabase/auth'
-import { useToastStore } from '@/store/toastStore'
+import { useAuthMutations } from '@/hooks/useAuthMutations'
 
 export default function LoginPage() {
   const router = useRouter()
-  const addToast = useToastStore((s) => s.addToast)
+  const { signIn, isSigningIn } = useAuthMutations()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
 
-  async function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setIsLoading(true)
-    try {
-      await signIn(email, password)
-      router.push('/')
-    } catch (err) {
-      console.error('خطا در ورود:', err)
-      addToast(err instanceof Error ? err.message : 'ورود ناموفق بود.')
-    } finally {
-      setIsLoading(false)
-    }
+    signIn(
+      { email, password },
+      { onSuccess: () => router.push('/') }
+    )
   }
 
   return (
@@ -57,10 +49,10 @@ export default function LoginPage() {
 
         <button
           type="submit"
-          disabled={isLoading}
+          disabled={isSigningIn}
           className="w-full bg-accent text-surface text-sm rounded-md py-2 disabled:opacity-50"
         >
-          {isLoading ? 'در حال ورود...' : 'ورود'}
+          {isSigningIn ? 'در حال ورود...' : 'ورود'}
         </button>
 
         <Link

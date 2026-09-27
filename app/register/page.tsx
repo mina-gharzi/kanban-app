@@ -3,30 +3,28 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { signUp } from '@/lib/supabase/auth'
+import { useAuthMutations } from '@/hooks/useAuthMutations'
 import { useToastStore } from '@/store/toastStore'
 
 export default function RegisterPage() {
   const router = useRouter()
   const addToast = useToastStore((s) => s.addToast)
+  const { signUp, isSigningUp } = useAuthMutations()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
 
-  async function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setIsLoading(true)
-    try {
-      await signUp(email, password)
-      addToast('ثبت‌نام با موفقیت انجام شد.', 'success')
-      router.push('/login')
-    } catch (err) {
-      console.error('خطا در ثبت‌نام:', err)
-      addToast(err instanceof Error ? err.message : 'ثبت‌نام ناموفق بود.')
-    } finally {
-      setIsLoading(false)
-    }
+    signUp(
+      { email, password },
+      {
+        onSuccess: () => {
+          addToast('ثبت‌نام با موفقیت انجام شد.', 'success')
+          router.push('/login')
+        },
+      }
+    )
   }
 
   return (
@@ -58,10 +56,10 @@ export default function RegisterPage() {
 
         <button
           type="submit"
-          disabled={isLoading}
+          disabled={isSigningUp}
           className="w-full bg-accent text-surface text-sm rounded-md py-2 disabled:opacity-50"
         >
-          {isLoading ? 'در حال ثبت‌نام...' : 'ثبت‌نام'}
+          {isSigningUp ? 'در حال ثبت‌نام...' : 'ثبت‌نام'}
         </button>
 
         <Link

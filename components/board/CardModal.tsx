@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import type { CardMutations } from '@/hooks/useCardMutations'
+import { validateTitle } from '@/lib/board/validation'
 import type { Card as CardType, CardFieldPatch } from '@/lib/board/types'
 import { LABEL_COLORS } from '@/lib/labelColors'
 
@@ -15,6 +16,7 @@ export default function CardModal({ card, cardMutations, onClose }: Props) {
   const [title, setTitle] = useState(card.title)
   const [description, setDescription] = useState(card.description ?? '')
   const [dueDate, setDueDate] = useState(card.due_date ?? '')
+  const [titleError, setTitleError] = useState<string | null>(null)
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -25,10 +27,17 @@ export default function CardModal({ card, cardMutations, onClose }: Props) {
   }, [onClose])
 
   function handleSave() {
+    // خطای اعتبارسنجی کنار همان فیلد نمایش داده می‌شود، نه به‌صورت toast
+    const titleValidation = validateTitle(title, 'card')
+    if (titleValidation) {
+      setTitleError(titleValidation.userMessage)
+      return
+    }
+
     // یک patch واحد: یک mutation، یک به‌روزرسانی خوش‌بینانه، یک invalidate
     const patch: CardFieldPatch = {}
     const trimmedTitle = title.trim()
-    if (trimmedTitle && trimmedTitle !== card.title) patch.title = trimmedTitle
+    if (trimmedTitle !== card.title) patch.title = trimmedTitle
     if (description !== (card.description ?? '')) patch.description = description
     if (dueDate !== (card.due_date ?? '')) patch.due_date = dueDate || null
 
@@ -62,10 +71,24 @@ export default function CardModal({ card, cardMutations, onClose }: Props) {
         <input
           id="card-modal-title"
           value={title}
-          onChange={(e) => setTitle(e.target.value)}
+          onChange={(e) => {
+            setTitle(e.target.value)
+            setTitleError(null)
+          }}
           aria-label="عنوان کارت"
+          aria-invalid={titleError !== null}
+          aria-describedby={titleError ? 'card-title-error' : undefined}
           className="w-full bg-card text-surface font-medium rounded-md p-2 mb-3 outline-none border border-transparent focus:border-accent"
         />
+        {titleError && (
+          <p
+            id="card-title-error"
+            role="alert"
+            className="-mt-2 mb-3 text-accent text-xs"
+          >
+            {titleError}
+          </p>
+        )}
 
         <label className="text-surface/60 text-xs block mb-1">لیبل</label>
         <div className="flex gap-2 mb-3">
