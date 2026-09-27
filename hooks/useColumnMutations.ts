@@ -27,6 +27,7 @@ import {
   runSerialized,
   trackOptimisticWrites,
 } from '@/lib/queries/mutationQueue'
+import { reconcileBoard } from '@/lib/queries/reconcile'
 import {
   addColumn,
   deleteColumn,
@@ -57,10 +58,19 @@ type MoveColumnContext = {
  *
  * حذف ستون، کارت‌های آن را هم از کش برمی‌دارد؛ rollback باید ستون **و**
  * همه‌ی کارت‌هایش را با جای قبلی برگرداند، وگرنه بورد ناقص می‌ماند.
+ *
+ * mutationKey این‌ها هم مثل کارت‌ها به همان بورد محدود است تا `onSettled` فقط
+ * آخرین mutation در حال اجرا اجازه‌ی refetch بگیرد.
  */
 export function useColumnMutations(boardId: string) {
   const queryClient = useQueryClient()
   const boardKey = queryKeys.board(boardId)
+  const columnMutationKey = queryKeys.boardMutation(boardId, 'column')
+
+  const settle = (releaseTracking: (() => void) | undefined): void => {
+    releaseTracking?.()
+    reconcileBoard(queryClient, boardId)
+  }
 
   const writeBoard = (updater: (previous: BoardData) => BoardData): void => {
     queryClient.setQueryData<BoardData>(boardKey, (previous) =>
@@ -76,6 +86,7 @@ export function useColumnMutations(boardId: string) {
   >({
     mutationFn: ({ title, position }: { title: string; position: number }) =>
       addColumn(boardId, title, position),
+    mutationKey: columnMutationKey,
     onMutate: async ({ title, position }) => {
       await queryClient.cancelQueries({ queryKey: boardKey })
       const previous = queryClient.getQueryData<BoardData>(boardKey)
@@ -115,8 +126,7 @@ export function useColumnMutations(boardId: string) {
       reportError(error, 'column.create')
     },
     onSettled: (_data, _error, _variables, context) => {
-      context?.releaseTracking()
-      queryClient.invalidateQueries({ queryKey: boardKey })
+      settle(context?.releaseTracking)
     },
   })
 
@@ -133,6 +143,7 @@ export function useColumnMutations(boardId: string) {
       columnId: string
       title: string
     }) => updateColumnTitle(columnId, title),
+    mutationKey: columnMutationKey,
     onMutate: async ({ columnId, title }) => {
       await queryClient.cancelQueries({ queryKey: boardKey })
       const previous = queryClient.getQueryData<BoardData>(boardKey)
@@ -173,8 +184,7 @@ export function useColumnMutations(boardId: string) {
       reportError(error, 'column.update')
     },
     onSettled: (_data, _error, _variables, context) => {
-      context?.releaseTracking()
-      queryClient.invalidateQueries({ queryKey: boardKey })
+      settle(context?.releaseTracking)
     },
   })
 
@@ -185,6 +195,7 @@ export function useColumnMutations(boardId: string) {
     DeleteColumnContext
   >({
     mutationFn: (columnId: string) => deleteColumn(columnId),
+    mutationKey: columnMutationKey,
     onMutate: async (columnId) => {
       await queryClient.cancelQueries({ queryKey: boardKey })
       const previous = queryClient.getQueryData<BoardData>(boardKey)
@@ -213,8 +224,7 @@ export function useColumnMutations(boardId: string) {
       reportError(error, 'column.delete')
     },
     onSettled: (_data, _error, _columnId, context) => {
-      context?.releaseTracking()
-      queryClient.invalidateQueries({ queryKey: boardKey })
+      settle(context?.releaseTracking)
     },
   })
 
@@ -226,6 +236,7 @@ export function useColumnMutations(boardId: string) {
   >({
     mutationFn: (updates: ColumnPositionUpdate[]) =>
       runSerialized(boardId, () => updateColumnPositions(updates)),
+    mutationKey: columnMutationKey,
     onMutate: async (updates) => {
       await queryClient.cancelQueries({ queryKey: boardKey })
       const previous = queryClient.getQueryData<BoardData>(boardKey)
@@ -255,8 +266,7 @@ export function useColumnMutations(boardId: string) {
       reportError(error, 'column.move')
     },
     onSettled: (_data, _error, _updates, context) => {
-      context?.releaseTracking()
-      queryClient.invalidateQueries({ queryKey: boardKey })
+      settle(context?.releaseTracking)
     },
   })
 

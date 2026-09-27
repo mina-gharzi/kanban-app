@@ -107,26 +107,32 @@ export async function updateCard(cardId: string, patch: CardFieldPatch) {
 /**
  * جابه‌جایی گروهی کارت‌ها در **یک** درخواست.
  *
- * چرا upsert و نه چند update مستقل؟ چند update مستقل در تراکنش جدا اجرا
- * می‌شوند؛ اگر یکی شکست بخورد، بقیه اعمال شده‌اند و UI بعد از rollback با
- * سرور ناسازگار می‌ماند. یک bulk upsert یک دستور SQL در یک تراکنش است:
- * یا همه‌ی سطرها جابه‌جا می‌شوند یا هیچ‌کدام.
+ * چرا RPC و نه bulk upsert؟ کلاینت قبلاً اینجا `upsert(..., { onConflict: 'id' })`
+ * می‌زد و همیشه با خطای 23502 شکست می‌خورد:
+ *     null value in column "title" of relation "cards" violates not-null constraint
+ * چون upsert در PostgREST یک `INSERT ... ON CONFLICT DO UPDATE` واقعی است و
+ * Postgres توکن NOT NULL را روی tuple پیشنهادیِ insert، *قبل* از انتخاب شاخه‌ی
+ * DO UPDATE بررسی می‌کند. پس نبودن `title` کل دستور را رد می‌کند، حتی وقتی
+ * id از قبل وجود دارد. راه درست، UPDATE خالص است.
  *
- * تمام idها از داده‌ی سرور می‌آیند، پس شاخه‌ی INSERT در ON CONFLICT اجرا
- * نمی‌شود (و اگر روزی اجرا شد، شکست آن کل دستور را برمی‌گرداند، نه نیمی از آن).
+ * چرا یک درخواست؟ چند update مستقل در تراکنش جدا اجرا می‌شوند؛ اگر یکی شکست
+ * بخورد بقیه اعمال شده‌اند و UI بعد از rollback با سرور ناسازگار می‌ماند. یک
+ * UPDATE چند-سطری یک تراکنش است: یا همه جابه‌جا می‌شوند یا هیچ‌کدام.
+ *
+ * ستون‌های دیگر کارت دست‌نخورده می‌مانند، پس ویرایش هم‌زمانِ title/label از
+ * سمت کلاینت دیگر با مقدار کهنه‌ی ما بازنویسی نمی‌شود.
+ *
+ * نیازمندی: `supabase/migrations/20260101000000_move_cards_and_columns.sql`
  */
 export async function updateManyCardPositions(updates: CardPositionUpdate[]) {
   if (updates.length === 0) return
-  const { error } = await supabase
-    .from('cards')
-    .upsert(
-      updates.map((update) => ({
-        id: update.id,
-        column_id: update.column_id,
-        position: update.position,
-      })),
-      { onConflict: 'id' },
-    )
+  const { error } = await supabase.rpc('move_cards', {
+    p_moves: updates.map((update) => ({
+      id: update.id,
+      column_id: update.column_id,
+      position: update.position,
+    })),
+  })
   if (error) throw normalizeError(error)
 }
 
@@ -158,14 +164,17 @@ export async function updateColumnTitle(columnId: string, title: string) {
   if (error) throw normalizeError(error)
 }
 
-/** جابه‌جایی گروهی ستون‌ها؛ یک درخواست و یک تراکنش (دلیلش مثل کارت‌ها). */
+/**
+ * جابه‌جایی گروهی ستون‌ها؛ یک درخواست و یک تراکنش.
+ * دلیل RPC و اشکال upsert، دقیقاً مثل `updateManyCardPositions` است.
+ */
 export async function updateColumnPositions(updates: ColumnPositionUpdate[]) {
   if (updates.length === 0) return
-  const { error } = await supabase
-    .from('columns')
-    .upsert(
-      updates.map((update) => ({ id: update.id, position: update.position })),
-      { onConflict: 'id' },
-    )
+  const { error } = await supabase.rpc('move_columns', {
+    p_moves: updates.map((update) => ({
+      id: update.id,
+      position: update.position,
+    })),
+  })
   if (error) throw normalizeError(error)
 }

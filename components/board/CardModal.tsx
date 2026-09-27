@@ -1,10 +1,25 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import type { CardMutations } from '@/hooks/useCardMutations'
 import { validateTitle } from '@/lib/board/validation'
 import type { Card as CardType, CardFieldPatch } from '@/lib/board/types'
 import { LABEL_COLORS } from '@/lib/labelColors'
+import { formatDueDate, getDueDateStatus } from '@/lib/dueDate'
+import {
+  CARD_FIELD_LABELS,
+  buildCardPatch,
+  detectCardEditConflicts,
+  readCardFields,
+  readDraftFields,
+} from '@/lib/board/conflict'
+import Button from '@/components/ui/Button'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
+import Field from '@/components/ui/Field'
+import Input from '@/components/ui/Input'
+import Modal from '@/components/ui/Modal'
+import Textarea from '@/components/ui/Textarea'
+import { AlertTriangleIcon, CalendarIcon, CheckIcon } from '@/components/ui/icons'
 
 type Props = {
   card: CardType
@@ -12,21 +27,73 @@ type Props = {
   onClose: () => void
 }
 
+/**
+ * جزئیات کارت.
+ *
+ * رفتار پایه حفظ شده: یک Save با یک patch واحد (یک mutation، یک به‌روزرسانی
+ * خوش‌بینانه، یک invalidate) و لیبل که بلافاصله و جداگانه ذخیره می‌شود
+ * چون خودش یک toggle است، نه بخشی از فرم.
+ *
+ * سه تضمین جدید:
+ *
+ * ۱) تعارض هم‌زمان: هنگام باز شدن، مقادیر فیلدهای قابل‌ویرایش snapshot
+ *    می‌شوند. `card` از Query Cache/Realtime می‌آید، پس اگر کاربر دیگری در
+ *    همان فیلدی که کاربر دست زده تغییری بدهد، بدون reload دیده می‌شود.
+ *    در آن حالت Save به «ذخیره به هر حال» تبدیل می‌شود تا بازنویسیِ
+ *    خاموش رخ ندهد.
+ *
+ * ۲) بستن فقط بعد از موفقیت واقعی: `mutateAsync` (نه `mutate`) استفاده
+ *    می‌شود؛ `onClose` فقط پس از resolve شدن mutation صدا زده می‌شود. در
+ *    خطا modal باز می‌ماند و draft کاربر دست‌نخورده می‌ماند.
+ *
+ * ۳) دابل‌کلیک: guard بر پایه‌ی ref است نه `isPending`. چون `isPending`
+ *    فقط بعد از re-render به‌روز می‌شود، دو submit هم‌زمان در یک tick هر دو
+ *    `false` می‌دیدند و دو mutation می‌فرستادند.
+ */
 export default function CardModal({ card, cardMutations, onClose }: Props) {
   const [title, setTitle] = useState(card.title)
   const [description, setDescription] = useState(card.description ?? '')
   const [dueDate, setDueDate] = useState(card.due_date ?? '')
   const [titleError, setTitleError] = useState<string | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false)
 
-  useEffect(() => {
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+  /**
+   * مقادیر اولیه در لحظه‌ی باز شدن modal.
+   *
+   * `useState` با lazy initializer، نه ref: این مقدار در render واقعاً
+   * استفاده می‌شود (مقایسه‌ی تعارض) و ref طبق قواعد React Hooks برای
+   * دسترسی در render مناسب نیست. تا وقتی modal باز است ثابت می‌ماند مگر
+   * اینکه کاربور «بارگذاری آخرین نسخه» را بزند.
+   */
+  const [base, setBase] = useState(() => readCardFields(card))
+  /** guard دابل‌کلیک؛ فقط در event handler خوانده می‌شود، نه در render */
+  const busyRef = useRef(false)
+
+  const isPending = cardMutations.isUpdating || cardMutations.isDeleting
+
+  const dueDateStatus = getDueDateStatus(card.due_date)
+
+  const draft = useMemo(
+    () => readDraftFields({ title, description, dueDate }),
+    [title, description, dueDate]
+  )
+  const server = useMemo(() => readCardFields(card), [card])
+  const conflicts = useMemo(
+    () => detectCardEditConflicts(base, draft, server),
+    [base, draft, server]
+  )
+
+  const handleClose = useCallback(() => {
+    // تا پایان mutation بسته نمی‌شود؛ `dismissible=false` هم راه‌های دیگر
+    // بستن را می‌بندد و این guard لایه‌ی دوم است
+    if (busyRef.current) return
+    onClose()
   }, [onClose])
 
-  function handleSave() {
+  const handleSave = useCallback(async () => {
+    if (busyRef.current) return
+
     // خطای اعتبارسنجی کنار همان فیلد نمایش داده می‌شود، نه به‌صورت toast
     const titleValidation = validateTitle(title, 'card')
     if (titleValidation) {
@@ -34,134 +101,261 @@ export default function CardModal({ card, cardMutations, onClose }: Props) {
       return
     }
 
-    // یک patch واحد: یک mutation، یک به‌روزرسانی خوش‌بینانه، یک invalidate
-    const patch: CardFieldPatch = {}
-    const trimmedTitle = title.trim()
-    if (trimmedTitle !== card.title) patch.title = trimmedTitle
-    if (description !== (card.description ?? '')) patch.description = description
-    if (dueDate !== (card.due_date ?? '')) patch.due_date = dueDate || null
-
-    if (Object.keys(patch).length > 0) {
-      cardMutations.updateCard({ cardId: card.id, patch })
+    // یک patch واحد: یک mutation، یک به‌روزرسانی خوش‌بینانه، یک invalidate.
+    // مبنا `base` است نه `card`، تا فیلدی که کاربر دستش نزده دست‌نخورده بماند
+    const patch = buildCardPatch(base, draft) as CardFieldPatch
+    if (Object.keys(patch).length === 0) {
+      onClose()
+      return
     }
-    onClose()
-  }
 
-  function handleLabelClick(color: string) {
-    cardMutations.updateCard({
-      cardId: card.id,
-      patch: {
-        label_color: card.label_color === color ? null : color,
-      },
-    })
-  }
+    busyRef.current = true
+    setSaveError(null)
+    try {
+      // تا resolve شدن واقعی صبر می‌کند؛ onClose فقط بعد از آن
+      await cardMutations.updateCardAsync({ cardId: card.id, patch })
+      onClose()
+    } catch {
+      // خطا پیش‌تر در mutation گزارش و cache rollback شده؛ اینجا فقط دلیل
+      // باز ماندن modal و امکان retry را به کاربر می‌گوییم
+      setSaveError('ذخیره نشد. تغییرات شما اینجاست؛ دوباره تلاش کنید.')
+    } finally {
+      busyRef.current = false
+    }
+  }, [base, card.id, cardMutations, draft, onClose, title])
+
+  const handleLabelClick = useCallback(
+    (color: string) => {
+      if (busyRef.current) return
+      // toggle است، نه بخشی از فرم: پس‌زمینه اجرا می‌شود
+      cardMutations.updateCard({
+        cardId: card.id,
+        patch: { label_color: card.label_color === color ? null : color },
+      })
+    },
+    [card.id, card.label_color, cardMutations]
+  )
+
+  const handleReloadLatest = useCallback(() => {
+    if (busyRef.current) return
+    // پایه هم با سرور هم‌تراز می‌شود، وگرنه تعارض بلافاصله برمی‌گردد
+    setBase(readCardFields(card))
+    setTitle(card.title)
+    setDescription(card.description ?? '')
+    setDueDate(card.due_date ?? '')
+    setTitleError(null)
+    setSaveError(null)
+  }, [card])
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (busyRef.current) return
+
+    busyRef.current = true
+    try {
+      await cardMutations.deleteCardAsync(card.id)
+      onClose()
+    } catch {
+      // دیالوگ بسته می‌شود ولی خود modal با پیام خطا باز می‌ماند تا retry ممکن باشد
+      setIsConfirmingDelete(false)
+      setSaveError('حذف نشد. دوباره تلاش کنید.')
+    } finally {
+      busyRef.current = false
+    }
+  }, [card.id, cardMutations, onClose])
 
   return (
-    <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-      onClick={onClose}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="card-modal-title"
-        className="bg-column rounded-xl p-5 w-full max-w-md mx-4"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <input
-          id="card-modal-title"
-          value={title}
-          onChange={(e) => {
-            setTitle(e.target.value)
-            setTitleError(null)
-          }}
-          aria-label="عنوان کارت"
-          aria-invalid={titleError !== null}
-          aria-describedby={titleError ? 'card-title-error' : undefined}
-          className="w-full bg-card text-surface font-medium rounded-md p-2 mb-3 outline-none border border-transparent focus:border-accent"
-        />
-        {titleError && (
-          <p
-            id="card-title-error"
-            role="alert"
-            className="-mt-2 mb-3 text-accent text-xs"
-          >
-            {titleError}
-          </p>
-        )}
-
-        <label className="text-surface/60 text-xs block mb-1">لیبل</label>
-        <div className="flex gap-2 mb-3">
-          {LABEL_COLORS.map((label) => (
-            <button
-              key={label.value}
-              title={label.name}
-              aria-label={`لیبل ${label.name}`}
-              aria-pressed={card.label_color === label.value}
-              onClick={() => handleLabelClick(label.value)}
-              className="w-6 h-6 rounded-full border-2"
-              style={{
-                backgroundColor: label.value,
-                borderColor:
-                  card.label_color === label.value ? 'white' : 'transparent',
-              }}
-            />
-          ))}
-        </div>
-
-        <label className="text-surface/60 text-xs block mb-1">تاریخ سررسید</label>
-        <div className="flex gap-2 mb-3">
-          <input
-            type="date"
-            value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
-            aria-label="تاریخ سررسید"
-            className="flex-1 bg-card text-surface text-sm rounded-md p-2 outline-none border border-transparent focus:border-accent"
-          />
-          {dueDate && (
-            <button
-              onClick={() => setDueDate('')}
-              aria-label="حذف تاریخ سررسید"
-              className="text-accent text-xs px-2"
+    <>
+      <Modal
+        title="جزئیات کارت"
+        onClose={handleClose}
+        size="lg"
+        dismissible={!isPending}
+        footer={
+          <>
+            <Button
+              variant="ghost"
+              className="me-auto text-danger hover:bg-danger-soft"
+              onClick={() => setIsConfirmingDelete(true)}
+              disabled={isPending}
             >
-              حذف تاریخ
-            </button>
-          )}
-        </div>
-
-        <label className="text-surface/60 text-xs block mb-1">توضیحات</label>
-        <textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          rows={5}
-          placeholder="توضیحات کارت..."
-          aria-label="توضیحات کارت"
-          className="w-full bg-card text-surface text-sm rounded-md p-2 outline-none border border-transparent focus:border-accent resize-none"
-        />
-
-        <div className="flex justify-between items-center mt-4">
-          <button
-            onClick={() => {
-              cardMutations.deleteCard(card.id)
-              onClose()
-            }}
-            className="text-accent text-xs hover:opacity-70"
-          >
-            حذف کارت
-          </button>
-          <div className="flex gap-2">
-            <button onClick={onClose} className="text-surface/60 text-xs px-3 py-1.5">
+              حذف کارت
+            </Button>
+            <Button variant="secondary" onClick={handleClose} disabled={isPending}>
               انصراف
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={handleSave}
-              className="bg-accent text-surface text-xs rounded-md px-3 py-1.5"
+              loading={isPending}
+              disabled={isPending}
             >
-              ذخیره
-            </button>
-          </div>
+              {isPending
+                ? 'در حال ذخیره…'
+                : conflicts.length > 0
+                  ? 'ذخیره به هر حال'
+                  : 'ذخیره تغییرات'}
+            </Button>
+          </>
+        }
+      >
+        <div className="flex flex-col gap-5">
+          {conflicts.length > 0 && (
+            <div
+              role="alert"
+              className="flex gap-3 rounded-lg border border-warning/40 bg-warning/10 p-3.5"
+            >
+              <span className="mt-0.5 shrink-0 text-warning">
+                <AlertTriangleIcon size={17} />
+              </span>
+              <div className="min-w-0 space-y-2.5">
+                <p className="text-[13px] leading-6 text-text">
+                  این کارت در جای دیگری تغییر کرده است. اگر «ذخیره به هر حال» را
+                  بزنید، نسخه‌ی جدیدتر بازنویسی می‌شود.
+                </p>
+                <p className="text-[12px] text-text-2">
+                  فیلدهای درگیر:{' '}
+                  {conflicts.map((field) => CARD_FIELD_LABELS[field]).join('، ')}
+                </p>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleReloadLatest}
+                  disabled={isPending}
+                >
+                  بارگذاری آخرین نسخه
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {saveError && (
+            <p
+              role="alert"
+              className="rounded-lg border border-danger/40 bg-danger-soft px-3 py-2 text-[13px] text-danger"
+            >
+              {saveError}
+            </p>
+          )}
+
+          <Field id="card-title" label="عنوان" error={titleError}>
+            {({ id, describedBy, invalid }) => (
+              <Input
+                id={id}
+                aria-describedby={describedBy}
+                value={title}
+                invalid={invalid}
+                onChange={(event) => {
+                  setTitle(event.target.value)
+                  setTitleError(null)
+                }}
+                placeholder="عنوان کارت"
+              />
+            )}
+          </Field>
+
+          <fieldset>
+            <legend className="mb-2 text-[13px] font-medium text-text">
+              لیبل
+            </legend>
+            <div className="flex flex-wrap gap-2">
+              {LABEL_COLORS.map((label) => {
+                const isActive = card.label_color === label.value
+                return (
+                  <button
+                    key={label.value}
+                    type="button"
+                    title={label.name}
+                    aria-label={`لیبل ${label.name}`}
+                    aria-pressed={isActive}
+                    disabled={isPending}
+                    onClick={() => handleLabelClick(label.value)}
+                    className={[
+                      'flex h-7 items-center gap-1.5 rounded-full border px-2.5',
+                      'text-[12px] transition-colors duration-150',
+                      'disabled:pointer-events-none disabled:opacity-55',
+                      isActive
+                        ? 'border-primary bg-primary-soft font-medium text-primary'
+                        : 'border-border bg-surface text-text-2 hover:border-border-2 hover:bg-surface-2',
+                    ].join(' ')}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="h-2.5 w-2.5 rounded-full"
+                      style={{ backgroundColor: label.value }}
+                    />
+                    {label.name}
+                    {isActive && <CheckIcon size={13} />}
+                  </button>
+                )
+              })}
+            </div>
+          </fieldset>
+
+          <Field
+            id="card-due-date"
+            label="تاریخ سررسید"
+            hint={
+              card.due_date
+                ? `${formatDueDate(card.due_date)}${
+                    dueDateStatus === 'overdue' ? ' — از موعد گذشته' : ''
+                  }`
+                : undefined
+            }
+          >
+            {({ id, describedBy, invalid }) => (
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <CalendarIcon
+                    size={15}
+                    className="pointer-events-none absolute inset-y-0 start-3 my-auto text-text-muted"
+                  />
+                  <Input
+                    id={id}
+                    aria-describedby={describedBy}
+                    invalid={invalid}
+                    type="date"
+                    className="ps-9"
+                    value={dueDate}
+                    onChange={(event) => setDueDate(event.target.value)}
+                  />
+                </div>
+                {dueDate && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setDueDate('')}
+                    disabled={isPending}
+                  >
+                    پاک کردن
+                  </Button>
+                )}
+              </div>
+            )}
+          </Field>
+
+          <Field id="card-description" label="توضیحات">
+            {({ id, describedBy }) => (
+              <Textarea
+                id={id}
+                aria-describedby={describedBy}
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+                rows={6}
+                placeholder="جزئیات، معیار انجام‌شدن، لینک‌ها…"
+              />
+            )}
+          </Field>
         </div>
-      </div>
-    </div>
+      </Modal>
+
+      {isConfirmingDelete && (
+        <ConfirmDialog
+          title="حذف کارت"
+          description={`کارت «${card.title}» برای همیشه حذف می‌شود. این عمل قابل بازگشت نیست.`}
+          confirmLabel="حذف کارت"
+          onCancel={() => setIsConfirmingDelete(false)}
+          onConfirm={handleConfirmDelete}
+        />
+      )}
+    </>
   )
 }

@@ -13,7 +13,7 @@ type RawSupabaseError = {
 }
 
 const NETWORK_PATTERN =
-  /fetch failed|failed to fetch|networkerror|network request failed|load failed|timeout|timed out|econnrefused|econnreset|enotfound|connection (refused|closed|failed|reset)/i
+  /fetch failed|failed to fetch|networkerror|network request failed|load failed|timeout|timed out|econnrefused|econnreset|enotfound|etimedout|epipe|ehostunreach|enetunreach|eai_again|connection (refused|closed|failed|reset)/i
 const PERMISSION_PATTERN =
   /permission denied|row-level security|not authorized|insufficient privilege/i
 const CONFLICT_PATTERN =
@@ -50,11 +50,40 @@ function fromStatus(status: number): ErrorCode | undefined {
   return undefined
 }
 
-/** کدهای خطای Postgres/PostgREST به دسته‌ی برنامه نگاشت می‌شوند. */
+/**
+ * کدهای خطای Postgres/PostgREST به دسته‌ی برنامه نگاشت می‌شوند.
+ *
+ * کلاس 23 یکپارچه نیست؛ کلاس 23 «integrity constraint violation» است و
+ * زیرکدهایش معنای متفاوتی دارند. قبلاً هر `23*` را CONFLICT می‌دادیم، برای
+ * همین `23502` (not-null) با پیام «این مورد قبلاً ایجاد شده است» گزارش می‌شد
+ * که کاملاً گمراه‌کننده بود. حالا فقط چیزی که واقعاً تعارض است، CONFLICT است.
+ */
+/**
+ * خطاهای «کد با دیتابیس هم‌خوان نیست».
+ *
+ * این‌ها با هیچ تعداد تلاش موفق نمی‌شوند: مشکل شبکه یا بار سرور نیست، بلکه
+ * این است که کد چیزی را صدا می‌زند که روی سرور وجود ندارد — معمولاً چون
+ * migration اجرا نشده است.
+ *
+ * چرا مهم است: پیش‌تر این خطا `DATABASE_ERROR` می‌شد که retryable است. یعنی
+ * کاربر می‌دید «دوباره تلاش کنید» و بی‌نهایت تلاش می‌کرد، در حالی که هیچ تلاشی
+ * کار نمی‌کرد تا وقتی migration اجرا شود. `PGRST202` یعنی تابع در schema cache
+ * نیست و `PGRST204` یعنی ستون نیست.
+ */
+const SCHEMA_MISMATCH_PATTERN =
+  /could not find the function|schema cache|could not find the column|PGRST20[24]/i
+
 function fromPostgresCode(code: string): ErrorCode | undefined {
   if (code === '42501') return ERROR_CODES.AUTHORIZATION
   if (code === 'PGRST116') return ERROR_CODES.NOT_FOUND
-  if (code.startsWith('23')) return ERROR_CODES.CONFLICT
+  // 23505 = unique_violation: همان «قبلاً وجود دارد»
+  if (code === '23505' || code === '23503') return ERROR_CODES.CONFLICT
+  // 23502 = not_null_violation، 23514 = check_violation: مقدار نامعتبر است،
+  // نه تعارض با رکورد دیگر
+  if (code === '23502' || code === '23514') return ERROR_CODES.VALIDATION
+  // سایر کدهای 23xx ناشناخته‌اند؛ بهتر است DATABASE باشند تا اینکه ادعای
+  // تعارض کنیم
+  if (code.startsWith('23')) return ERROR_CODES.DATABASE
   if (code.startsWith('08')) return ERROR_CODES.NETWORK
   if (code.startsWith('22') || code.startsWith('42')) return ERROR_CODES.DATABASE
   return undefined
@@ -110,6 +139,19 @@ export function normalizeError(error: unknown): AppError {
 
   // ۳) کد خطای دیتابیس
   if (raw.code) {
+    // ناهماهنگی schema/کد: نه retryable، و پیامش باید راه‌حل را بگوید نه
+    // «دوباره تلاش کنید». چون تکرارِ این خطا هیچ‌وقت نتیجه نمی‌دهد.
+    if (/^PGRST20[24]$/.test(raw.code) || SCHEMA_MISMATCH_PATTERN.test(raw.message)) {
+      return new AppError({
+        code: ERROR_CODES.DATABASE,
+        message: `${raw.code}: ${raw.message}`,
+        userMessage:
+          'این قابلیت روی سرور آماده نیست. کوئری‌های موردنیاز (تابع یا ستون) در پایگاه‌داده وجود ندارد.',
+        retryable: false,
+        cause,
+      })
+    }
+
     const postgresCode = fromPostgresCode(raw.code)
     if (postgresCode) {
       return new AppError({

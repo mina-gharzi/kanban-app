@@ -61,7 +61,16 @@ export function useBoardMutations() {
   })
 
   return {
-    createBoard: create.mutate,
+    /**
+     * تنها راه ساخت بورد: Promise-based تا فرم بتواند تا نتیجه‌ی واقعی باز
+     * بماند. نسخه‌ی fire-and-forgetِ `mutate` عمداً expose نشده، چون هر
+     * فراخوانی‌اش وسوسه‌ی پاک‌کردن زودهنگام ورودی و از دست رفتن عنوان کاربر
+     * در خطا را می‌ساخت.
+     */
+    createBoardAsync: create.mutateAsync,
+    /** برای disable کردن submit و نمایش «در حال ساخت…» */
+    isCreatingBoard: create.isPending,
+    isDeletingBoard: remove.isPending,
     deleteBoard: remove.mutate,
   }
 }

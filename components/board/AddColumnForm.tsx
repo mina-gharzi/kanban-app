@@ -1,86 +1,97 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { validateTitle } from '@/lib/board/validation'
+import Button from '@/components/ui/Button'
+import IconButton from '@/components/ui/IconButton'
+import Input from '@/components/ui/Input'
+import { PlusIcon, XIcon } from '@/components/ui/icons'
 
 type Props = {
   onAdd: (title: string) => void
 }
 
+/**
+ * فرم «افزودن ستون» در انتهای بورد.
+ *
+ * فرم بعد از موفقیت بسته می‌شود؛ محدودیت سقف ستون در لایه‌ی داده
+ * (`createColumn`) اعمال می‌شود و این کامپوننت چیزی اختراع نمی‌کند.
+ */
 export default function AddColumnForm({ onAdd }: Props) {
-  const [title, setTitle] = useState('')
   const [isOpen, setIsOpen] = useState(false)
-  const [fieldError, setFieldError] = useState<string | null>(null)
+  const [title, setTitle] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
+  useEffect(() => {
+    if (isOpen) inputRef.current?.focus()
+  }, [isOpen])
+
+  function open() {
+    setIsOpen(true)
+    setError(null)
+  }
+
+  function close() {
+    setIsOpen(false)
+    setTitle('')
+    setError(null)
+  }
+
+  function submit() {
     const validationError = validateTitle(title, 'column')
     if (validationError) {
-      setFieldError(validationError.userMessage)
+      setError(validationError.userMessage)
       return
     }
     onAdd(title.trim())
-    setTitle('')
-    setFieldError(null)
-    setIsOpen(false)
+    close()
   }
 
   if (!isOpen) {
     return (
       <button
-        onClick={() => setIsOpen(true)}
-        className="min-w-[260px] h-fit bg-column/50 text-surface/70 hover:text-surface rounded-xl p-3 text-sm"
+        type="button"
+        onClick={open}
+        className="flex w-64 shrink-0 items-center gap-1.5 rounded-xl border border-dashed border-border-2 px-3 py-2.5 text-[13px] text-text-2 transition-colors hover:border-border-2 hover:bg-surface-2 hover:text-text"
       >
-        + افزودن ستون
+        <PlusIcon size={15} />
+        افزودن ستون
       </button>
     )
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="min-w-[260px] h-fit bg-column rounded-xl p-3"
-    >
-      <input
-        autoFocus
+    <div className="flex w-64 shrink-0 flex-col gap-1.5 rounded-xl border border-border bg-surface p-2 shadow-xs">
+      <Input
+        ref={inputRef}
+        size="sm"
         value={title}
-        onChange={(e) => {
-          setTitle(e.target.value)
-          setFieldError(null)
+        invalid={error !== null}
+        placeholder="نام ستون"
+        aria-label="نام ستون جدید"
+        onChange={(event) => {
+          setTitle(event.target.value)
+          setError(null)
         }}
-        placeholder="عنوان ستون..."
-        aria-label="عنوان ستون جدید"
-        aria-invalid={fieldError !== null}
-        aria-describedby={fieldError ? 'add-column-error' : undefined}
-        className="w-full bg-card text-surface text-sm rounded-md p-2 outline-none border border-transparent focus:border-accent"
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') submit()
+          if (event.key === 'Escape') close()
+        }}
       />
-      {fieldError && (
-        <p
-          id="add-column-error"
-          role="alert"
-          className="text-accent text-xs mt-1"
-        >
-          {fieldError}
+      {error && (
+        <p role="alert" className="text-[11px] text-danger">
+          {error}
         </p>
       )}
-      <div className="flex gap-2 mt-2">
-        <button
-          type="submit"
-          className="bg-accent text-surface text-xs rounded-md px-3 py-1.5"
-        >
-          افزودن
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setIsOpen(false)
-            setFieldError(null)
-          }}
-          className="text-surface/60 text-xs px-3 py-1.5"
-        >
-          انصراف
-        </button>
+      <div className="flex items-center gap-1.5">
+        <Button size="sm" onClick={submit}>
+          افزودن ستون
+        </Button>
+        <IconButton label="انصراف" size="sm" onClick={close}>
+          <XIcon size={15} />
+        </IconButton>
       </div>
-    </form>
+    </div>
   )
 }

@@ -2,16 +2,17 @@
 
 import { memo, useMemo, useState } from 'react'
 import { useDroppable } from '@dnd-kit/core'
-import { useSortable } from '@dnd-kit/sortable'
+import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import type { CardMutations } from '@/hooks/useCardMutations'
 import type { ColumnMutations } from '@/hooks/useColumnMutations'
-import { validateTitle } from '@/lib/board/validation'
 import { isTemporaryId } from '@/lib/board/optimistic'
 import type { Card, Column as ColumnType } from '@/lib/board/types'
 import AddCardForm from './AddCardForm'
 import CardComponent from './Card'
+import ColumnHeader from './ColumnHeader'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
+import { PlusIcon } from '@/components/ui/icons'
 
 type Props = {
   column: ColumnType
@@ -34,8 +35,9 @@ function Column({
   // نه حذف می‌شود و نه کارت تازه می‌گیرد (کارت در ستونِ ناموجود در سرور
   // شکست می‌خورد)
   const isPending = isTemporaryId(column.id)
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false)
 
-  const { setNodeRef: setDroppableRef } = useDroppable({
+  const { setNodeRef: setDroppableRef, isOver } = useDroppable({
     id: column.id,
     disabled: isPending,
   })
@@ -56,131 +58,93 @@ function Column({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isPending ? 0.6 : isDragging ? 0.5 : 1,
   }
-
-  const [isEditingTitle, setIsEditingTitle] = useState(false)
-  const [draftTitle, setDraftTitle] = useState(column.title)
-  const [titleError, setTitleError] = useState<string | null>(null)
 
   const cardIds = useMemo(() => cards.map((card) => card.id), [cards])
 
-  function saveTitle() {
-    // خطای اعتبارسنجی کنار فیلد می‌ماند و حالت ویرایش بسته نمی‌شود
-    const validationError = validateTitle(draftTitle, 'column')
-    if (validationError) {
-      setTitleError(validationError.userMessage)
-      return
-    }
-    const trimmed = draftTitle.trim()
-    if (trimmed !== column.title) {
-      columnMutations.updateColumnTitle({ columnId: column.id, title: trimmed })
-    }
-    setTitleError(null)
-    setIsEditingTitle(false)
-  }
-
-  function cancelTitleEdit() {
-    setTitleError(null)
-    setDraftTitle(column.title)
-    setIsEditingTitle(false)
-  }
+  const isFilteredOut =
+    visibleCardIds !== null && cards.every((card) => !visibleCardIds.has(card.id))
 
   return (
-    <div
-      ref={(node) => {
-        setSortableRef(node)
-        setDroppableRef(node)
-      }}
-      style={style}
-      className="min-w-65 max-w-65 bg-column rounded-xl p-3 flex flex-col"
-    >
-      <div className="flex justify-between items-center mb-3 px-1">
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          <span
-            {...attributes}
-            {...listeners}
-            title="جابه‌جایی ستون"
-            aria-label="جابه‌جایی ستون"
-            className="text-surface/40 cursor-grab active:cursor-grabbing select-none"
-          >
-            ⠿
-          </span>
-          {isEditingTitle ? (
-            <div className="flex-1 min-w-0">
-              <input
-                autoFocus
-                value={draftTitle}
-                onChange={(e) => {
-                  setDraftTitle(e.target.value)
-                  setTitleError(null)
-                }}
-                onBlur={saveTitle}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') saveTitle()
-                  if (e.key === 'Escape') cancelTitleEdit()
-                }}
-                aria-label="عنوان ستون"
-                aria-invalid={titleError !== null}
-                aria-describedby={titleError ? 'column-title-error' : undefined}
-                className="w-full bg-surface/10 text-surface text-sm rounded px-1 outline-none border border-accent"
-              />
-              {titleError && (
-                <p
-                  id="column-title-error"
-                  role="alert"
-                  className="text-accent text-xs mt-1"
+    <div className="flex w-72 shrink-0 flex-col">
+      <div
+        ref={(node) => {
+          setSortableRef(node)
+          setDroppableRef(node)
+        }}
+        style={style}
+        aria-label={`ستون ${column.title}`}
+        className={[
+          'flex flex-col rounded-xl border bg-surface-2/60 p-2',
+          'transition-colors duration-150',
+          // حین Drag ستون فقط محو می‌شود؛ DragOverlay جای آن را می‌گیرد
+          isDragging ? 'opacity-40' : 'opacity-100',
+          isPending ? 'opacity-60' : 'opacity-100',
+          // هایلایت شدن ستون به‌عنوان مقصد Drop
+          isOver ? 'border-primary bg-primary-soft/40' : 'border-border',
+        ].join(' ')}
+      >
+        <ColumnHeader
+          column={column}
+          cardCount={cards.length}
+          isPending={isPending}
+          dragHandleProps={{ ...attributes, ...listeners }}
+          onRename={(title) =>
+            columnMutations.updateColumnTitle({ columnId: column.id, title })
+          }
+          onRequestDelete={() => setIsConfirmingDelete(true)}
+        />
+
+        <div className="flex min-h-16 flex-1 flex-col gap-2">
+          <SortableContext items={cardIds} strategy={verticalListSortingStrategy}>
+            {cards.map((card) => {
+              const isVisible = visibleCardIds === null || visibleCardIds.has(card.id)
+              return (
+                <div
+                  key={card.id}
+                  style={{ display: isVisible ? 'block' : 'none' }}
                 >
-                  {titleError}
-                </p>
-              )}
+                  <CardComponent card={card} onOpen={onOpenCard} />
+                </div>
+              )
+            })}
+          </SortableContext>
+
+          {/* جای خالی: هم بورد تازه را صمیمی می‌کند، هم هدف Drop را
+              قابل تشخیص می‌سازد (به‌جای فضای صفر که غیرقابل کلیک است) */}
+          {isFilteredOut ? (
+            <p className="px-1 py-3 text-center text-xs text-text-muted">
+              کارتی با این فیلترها نیست
+            </p>
+          ) : cards.length === 0 ? (
+            <div className="flex flex-col items-center gap-1.5 rounded-lg border border-dashed border-border-2 px-2 py-5 text-center">
+              <PlusIcon size={16} className="text-text-muted" />
+              <p className="text-xs text-text-muted">هنوز کارتی اینجا نیست</p>
             </div>
-          ) : (
-            <h3
-              className="text-surface font-medium text-sm truncate"
-              title={column.title}
-              onDoubleClick={() => {
-                if (isPending) return
-                setIsEditingTitle(true)
-              }}
-            >
-              {column.title}
-              <span className="text-surface/50 mr-2">({cards.length})</span>
-            </h3>
-          )}
+          ) : null}
         </div>
+
         {!isPending && (
-          <button
-            onClick={() => columnMutations.deleteColumn(column.id)}
-            aria-label={`حذف ستون ${column.title}`}
-            className="text-accent text-xs shrink-0 hover:opacity-70"
-          >
-            حذف
-          </button>
+          <div className="mt-2">
+            <AddCardForm
+              onAdd={(title) =>
+                cardMutations.createCard({ columnId: column.id, title })
+              }
+            />
+          </div>
         )}
       </div>
 
-      <div className="flex-1 min-h-2.5">
-        <SortableContext items={cardIds} strategy={verticalListSortingStrategy}>
-          {cards.map((card) => {
-            const isVisible = visibleCardIds === null || visibleCardIds.has(card.id)
-            return (
-              <div
-                key={card.id}
-                style={{ display: isVisible ? 'block' : 'none' }}
-              >
-                <CardComponent card={card} onOpen={onOpenCard} />
-              </div>
-            )
-          })}
-        </SortableContext>
-      </div>
-
-      {!isPending && (
-        <AddCardForm
-          onAdd={(title) =>
-            cardMutations.createCard({ columnId: column.id, title })
-          }
+      {isConfirmingDelete && (
+        <ConfirmDialog
+          onCancel={() => setIsConfirmingDelete(false)}
+          onConfirm={() => {
+            setIsConfirmingDelete(false)
+            columnMutations.deleteColumn(column.id)
+          }}
+          title="حذف ستون"
+          description={`ستون «${column.title}» و همه‌ی کارت‌های داخل آن برای همیشه حذف می‌شود. این عمل قابل بازگشت نیست.`}
+          confirmLabel="حذف ستون"
         />
       )}
     </div>

@@ -1,45 +1,33 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase/client'
-import type { User } from '@supabase/supabase-js'
+import { useCurrentUser } from '@/hooks/useCurrentUser'
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter()
-  const [user, setUser] = useState<User | null>(null)
-  const [isChecking, setIsChecking] = useState(true)
+  const { user, isChecking } = useCurrentUser()
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (!data.session) {
-        router.replace('/login')
-      } else {
-        setUser(data.session.user)
-      }
-      setIsChecking(false)
-    })
+    if (!isChecking && !user) router.replace('/login')
+  }, [isChecking, user, router])
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session) {
-        router.replace('/login')
-      } else {
-        setUser(session.user)
-      }
-    })
-
-    return () => listener.subscription.unsubscribe()
-  }, [router])
-
-  if (isChecking) {
-    return (
-      <div className="min-h-screen bg-surface flex items-center justify-center">
-        <p className="text-column">در حال بررسی ورود...</p>
-      </div>
-    )
-  }
-
+  // تا وقتی بررسی تمام نشده، هیچ محتوایی رندر نمی‌شود تا flash محتوای
+  // محافظت‌شده دیده نشود
+  if (isChecking) return <AuthCheckingScreen />
   if (!user) return null // در حال ریدایرکت
 
   return <>{children}</>
+}
+
+/** اسکلت به‌جای متن ساده، تا ارتفاع صفحه نپرد. */
+function AuthCheckingScreen() {
+  return (
+    <div className="flex min-h-dvh items-center justify-center bg-bg">
+      <div className="flex flex-col items-center gap-3" role="status">
+        <div className="h-8 w-8 animate-pulse rounded-lg bg-surface-3" />
+        <p className="text-[13px] text-text-muted">در حال بررسی نشست…</p>
+      </div>
+    </div>
+  )
 }

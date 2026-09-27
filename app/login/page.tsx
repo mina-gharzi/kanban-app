@@ -1,9 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useAuthMutations } from '@/hooks/useAuthMutations'
+import AuthCard from '@/components/auth/AuthCard'
+import Button from '@/components/ui/Button'
+import Field from '@/components/ui/Field'
+import Input from '@/components/ui/Input'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -12,8 +15,8 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
+  function handleSubmit(event: React.FormEvent) {
+    event.preventDefault()
     signIn(
       { email, password },
       { onSuccess: () => router.push('/') }
@@ -21,47 +24,49 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface flex items-center justify-center p-4">
-      <form
-        onSubmit={handleSubmit}
-        className="bg-column rounded-xl p-6 w-full max-w-sm"
-      >
-        <h1 className="text-surface text-lg font-bold mb-5">ورود</h1>
+    <AuthCard
+      title="ورود به حساب"
+      subtitle="برای دسترسی به بوردهایتان وارد شوید."
+      footerLink={{ href: '/register', label: 'حساب نداری؟ ثبت‌نام کنید' }}
+    >
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <Field id="email" label="ایمیل" required>
+          {({ id, describedBy }) => (
+            <Input
+              id={id}
+              aria-describedby={describedBy}
+              type="email"
+              required
+              autoComplete="email"
+              autoFocus
+              dir="ltr"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="you@example.com"
+            />
+          )}
+        </Field>
 
-        <label className="text-surface/60 text-xs block mb-1">ایمیل</label>
-        <input
-          type="email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full bg-card text-surface text-sm rounded-md p-2 mb-3 outline-none border border-transparent focus:border-accent"
-        />
+        <Field id="password" label="رمز عبور" required>
+          {({ id, describedBy }) => (
+            <Input
+              id={id}
+              aria-describedby={describedBy}
+              type="password"
+              required
+              minLength={6}
+              autoComplete="current-password"
+              dir="ltr"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+            />
+          )}
+        </Field>
 
-        <label className="text-surface/60 text-xs block mb-1">رمز عبور</label>
-        <input
-          type="password"
-          required
-          minLength={6}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full bg-card text-surface text-sm rounded-md p-2 mb-4 outline-none border border-transparent focus:border-accent"
-        />
-
-        <button
-          type="submit"
-          disabled={isSigningIn}
-          className="w-full bg-accent text-surface text-sm rounded-md py-2 disabled:opacity-50"
-        >
-          {isSigningIn ? 'در حال ورود...' : 'ورود'}
-        </button>
-
-        <Link
-          href="/register"
-          className="block text-center text-surface/60 text-xs mt-3 hover:text-surface"
-        >
-          حساب نداری؟ ثبت‌نام کن
-        </Link>
+        <Button type="submit" fullWidth loading={isSigningIn} className="mt-1">
+          {isSigningIn ? 'در حال ورود…' : 'ورود'}
+        </Button>
       </form>
-    </div>
+    </AuthCard>
   )
 }

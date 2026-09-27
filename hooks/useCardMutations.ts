@@ -30,6 +30,7 @@ import {
   runSerialized,
   trackOptimisticWrites,
 } from '@/lib/queries/mutationQueue'
+import { reconcileBoard } from '@/lib/queries/reconcile'
 import {
   addCard,
   deleteCard,
@@ -65,7 +66,11 @@ type MoveCardContext = {
  * الگوی مشترک هر mutation:
  *   onMutate → snapshot محدود به همان رکوردها → نوشتن در کش (بلافاصله)
  *   onError  → برگرداندن دقیق همان مقدارها + یک پیام از reportError
- *   onSettled→ آزادسازی ردیابی + invalidate برای همگام‌سازی با سرور
+ *   onSettled→ آزادسازی ردیابی + reconcile که فقط آخرین mutation بورد را refetch می‌کند
+ *
+ * همه‌ی mutationها یک mutationKey مشترک (و محدود به بورد) دارند. بدون آن،
+ * `isMutating` نمی‌تواند تشخیص دهد کدام تغییرها هنوز در جریان‌اند و refetchِ
+ * زودهنگام، داده‌ی optimistic تغییرهای بعدی را پاک می‌کند.
  *
  * snapshot عمداً کل بورد نیست: اگر دو mutation هم‌زمان در جریان باشند،
  * rollback یکی نباید تغییر موفق دیگری را پاک کند.
@@ -73,6 +78,14 @@ type MoveCardContext = {
 export function useCardMutations(boardId: string) {
   const queryClient = useQueryClient()
   const boardKey = queryKeys.board(boardId)
+  const cardMutationKey = queryKeys.boardMutation(boardId, 'card')
+
+  const settle = (
+    releaseTracking: (() => void) | undefined
+  ): void => {
+    releaseTracking?.()
+    reconcileBoard(queryClient, boardId)
+  }
 
   const writeBoard = (
     updater: (previous: BoardData) => BoardData
@@ -90,6 +103,7 @@ export function useCardMutations(boardId: string) {
   >({
     mutationFn: ({ columnId, title, position }: CreateCardVariables) =>
       addCard(columnId, title, position),
+    mutationKey: cardMutationKey,
     onMutate: async ({ columnId, title, position }: CreateCardVariables) => {
       await queryClient.cancelQueries({ queryKey: boardKey })
       const previous = queryClient.getQueryData<BoardData>(boardKey)
@@ -131,8 +145,7 @@ export function useCardMutations(boardId: string) {
       reportError(error, 'card.create')
     },
     onSettled: (_data, _error, _variables, context) => {
-      context?.releaseTracking()
-      queryClient.invalidateQueries({ queryKey: boardKey })
+      settle(context?.releaseTracking)
     },
   })
 
@@ -149,6 +162,7 @@ export function useCardMutations(boardId: string) {
       cardId: string
       patch: CardFieldPatch
     }) => updateCard(cardId, patch),
+    mutationKey: cardMutationKey,
     onMutate: async ({ cardId, patch }) => {
       await queryClient.cancelQueries({ queryKey: boardKey })
       const previous = queryClient.getQueryData<BoardData>(boardKey)
@@ -179,8 +193,7 @@ export function useCardMutations(boardId: string) {
       reportError(error, 'card.update')
     },
     onSettled: (_data, _error, _variables, context) => {
-      context?.releaseTracking()
-      queryClient.invalidateQueries({ queryKey: boardKey })
+      settle(context?.releaseTracking)
     },
   })
 
@@ -191,6 +204,7 @@ export function useCardMutations(boardId: string) {
     DeleteCardContext
   >({
     mutationFn: (cardId: string) => deleteCard(cardId),
+    mutationKey: cardMutationKey,
     onMutate: async (cardId) => {
       await queryClient.cancelQueries({ queryKey: boardKey })
       const previous = queryClient.getQueryData<BoardData>(boardKey)
@@ -216,8 +230,7 @@ export function useCardMutations(boardId: string) {
       reportError(error, 'card.delete')
     },
     onSettled: (_data, _error, _cardId, context) => {
-      context?.releaseTracking()
-      queryClient.invalidateQueries({ queryKey: boardKey })
+      settle(context?.releaseTracking)
     },
   })
 
@@ -231,6 +244,7 @@ export function useCardMutations(boardId: string) {
       // دو Drag پشت سر هم نباید هم‌زمان به سرور برسند، وگرنه ترتیب جابه‌جایی
       // می‌تواند برعکس ثبت شود
       runSerialized(boardId, () => updateManyCardPositions(updates)),
+    mutationKey: cardMutationKey,
     onMutate: async (updates) => {
       await queryClient.cancelQueries({ queryKey: boardKey })
       const previous = queryClient.getQueryData<BoardData>(boardKey)
@@ -261,8 +275,7 @@ export function useCardMutations(boardId: string) {
       reportError(error, 'card.move')
     },
     onSettled: (_data, _error, _updates, context) => {
-      context?.releaseTracking()
-      queryClient.invalidateQueries({ queryKey: boardKey })
+      settle(context?.releaseTracking)
     },
   })
 
@@ -270,6 +283,8 @@ export function useCardMutations(boardId: string) {
   const { mutate: mutateUpdateCard } = updateCardMutation
   const { mutate: mutateDeleteCard } = removeCardMutation
   const { mutate: mutateMoveCard } = moveCardMutation
+  const { mutateAsync: mutateUpdateCardAsync } = updateCardMutation
+  const { mutateAsync: mutateDeleteCardAsync } = removeCardMutation
 
   /**
    * جای کارت جدید یک‌بار و از آخرین کش تعیین می‌شود و همان مقدار هم برای
@@ -293,11 +308,31 @@ export function useCardMutations(boardId: string) {
   return useMemo(
     () => ({
       createCard,
+      /** fire-and-forget؛ برای toggleهای فوری مثل تغییر لیبل */
       updateCard: mutateUpdateCard,
       deleteCard: mutateDeleteCard,
       moveCard: mutateMoveCard,
+      /**
+       * نسخه‌ی Promise-based برای فرم‌هایی که باید تا نتیجه‌ی واقعی باز بمانند
+       * (مثلاً `CardModal`). با `mutate` فقط فراخوانی «انجام‌شده» فرض می‌شد،
+       * چون هیچ اطلاعی از resolve/reject شدن به caller نمی‌رسید.
+       */
+      updateCardAsync: mutateUpdateCardAsync,
+      deleteCardAsync: mutateDeleteCardAsync,
+      /** برای disable کردن دکمه‌ها و نمایش «در حال ذخیره…» */
+      isUpdating: updateCardMutation.isPending,
+      isDeleting: removeCardMutation.isPending,
     }),
-    [createCard, mutateUpdateCard, mutateDeleteCard, mutateMoveCard]
+    [
+      createCard,
+      mutateUpdateCard,
+      mutateDeleteCard,
+      mutateMoveCard,
+      mutateUpdateCardAsync,
+      mutateDeleteCardAsync,
+      updateCardMutation.isPending,
+      removeCardMutation.isPending,
+    ]
   )
 }
 
