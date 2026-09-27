@@ -1,53 +1,147 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { applyCardPositions } from '@/lib/board/layout'
+import {
+  createOptimisticCard,
+  insertCardAt,
+  nextCardPosition,
+  removeCardAt,
+  replaceTemporaryCard,
+  restoreCardFields,
+  restoreCardPositions,
+  snapshotCardFields,
+  snapshotCardMove,
+  type CardFieldSnapshot,
+  type CardMoveSnapshot,
+  type RemovedCard,
+} from '@/lib/board/optimistic'
 import { reportError } from '@/lib/errors/reportError'
 import type {
   BoardData,
+  Card,
   CardFieldPatch,
   CardPositionUpdate,
 } from '@/lib/board/types'
 import { queryKeys } from '@/lib/queries/keys'
-import { addCard, deleteCard, updateCard, updateManyCardPositions } from '@/lib/supabase/queries'
+import {
+  pendingCreateKey,
+  runSerialized,
+  trackOptimisticWrites,
+} from '@/lib/queries/mutationQueue'
+import {
+  addCard,
+  deleteCard,
+  updateCard,
+  updateManyCardPositions,
+} from '@/lib/supabase/queries'
 
-function nextPositionInColumn(
-  data: BoardData | undefined,
+/** متغیرهای create: position در لحظه‌ی کاربر و از آخرین کش تعیین می‌شود. */
+type CreateCardVariables = {
   columnId: string
-): number {
-  if (!data) return 0
-  return data.cards.filter((card) => card.column_id === columnId).length
+  title: string
+  position: number
 }
 
+type CreateCardContext = {
+  temporaryId: string
+  releaseTracking: () => void
+} | null
+
+type UpdateCardContext = {
+  snapshot: CardFieldSnapshot
+  releaseTracking: () => void
+} | null
+type DeleteCardContext = { removed: RemovedCard; releaseTracking: () => void } | null
+type MoveCardContext = {
+  snapshot: CardMoveSnapshot
+  releaseTracking: () => void
+} | null
+
 /**
- * Mutationهای کارت روی Query Cache بورد کار می‌کنند:
- * ساخت از پاسخ سرور کش می‌شود و بقیه به‌صورت optimistic
- * (onMutate → snapshot → update cache) اعمال می‌شوند و در خطا rollback می‌گردند.
+ * همه‌ی mutationهای کارت روی یک منبع حقیقت کار می‌کنند: Query Cache بورد.
  *
- * خطا دقیقاً یک‌بار در reportError گزارش می‌شود؛ UI فقط یک پیام می‌بیند.
+ * الگوی مشترک هر mutation:
+ *   onMutate → snapshot محدود به همان رکوردها → نوشتن در کش (بلافاصله)
+ *   onError  → برگرداندن دقیق همان مقدارها + یک پیام از reportError
+ *   onSettled→ آزادسازی ردیابی + invalidate برای همگام‌سازی با سرور
+ *
+ * snapshot عمداً کل بورد نیست: اگر دو mutation هم‌زمان در جریان باشند،
+ * rollback یکی نباید تغییر موفق دیگری را پاک کند.
  */
 export function useCardMutations(boardId: string) {
   const queryClient = useQueryClient()
   const boardKey = queryKeys.board(boardId)
 
-  const createCardMutation = useMutation({
-    mutationFn: ({ columnId, title }: { columnId: string; title: string }) => {
-      const data = queryClient.getQueryData<BoardData>(boardKey)
-      return addCard(columnId, title, nextPositionInColumn(data, columnId))
+  const writeBoard = (
+    updater: (previous: BoardData) => BoardData
+  ): void => {
+    queryClient.setQueryData<BoardData>(boardKey, (previous) =>
+      previous ? updater(previous) : previous
+    )
+  }
+
+  const createCardMutation = useMutation<
+    Card,
+    unknown,
+    CreateCardVariables,
+    CreateCardContext
+  >({
+    mutationFn: ({ columnId, title, position }: CreateCardVariables) =>
+      addCard(columnId, title, position),
+    onMutate: async ({ columnId, title, position }: CreateCardVariables) => {
+      await queryClient.cancelQueries({ queryKey: boardKey })
+      const previous = queryClient.getQueryData<BoardData>(boardKey)
+      if (!previous) return null
+
+      const optimisticCard = createOptimisticCard({
+        columnId,
+        title,
+        position,
+      })
+      writeBoard((data) => ({
+        ...data,
+        cards: [...data.cards, optimisticCard],
+      }))
+
+      return {
+        temporaryId: optimisticCard.id,
+        // تا وقتی این create در جریان است، realtime نباید کارت را دوباره اضافه کند
+        releaseTracking: trackOptimisticWrites(boardId, [
+          pendingCreateKey('card', columnId),
+        ]),
+      }
     },
-    onSuccess: (newCard) => {
-      queryClient.setQueryData<BoardData>(boardKey, (previous) =>
-        previous
-          ? { ...previous, cards: [...previous.cards, newCard] }
-          : previous
-      )
+    onSuccess: (newCard, _variables, context) => {
+      if (!context) return
+      // رکورد موقت با پاسخ سرور جایگزین می‌شود؛ طول آرایه ثابت می‌ماند
+      writeBoard((data) => ({
+        ...data,
+        cards: replaceTemporaryCard(data.cards, context.temporaryId, newCard),
+      }))
     },
-    onError: (error) => reportError(error, 'card.create'),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: boardKey }),
+    onError: (error, _variables, context) => {
+      if (context) {
+        writeBoard((data) => ({
+          ...data,
+          cards: data.cards.filter((card) => card.id !== context.temporaryId),
+        }))
+      }
+      reportError(error, 'card.create')
+    },
+    onSettled: (_data, _error, _variables, context) => {
+      context?.releaseTracking()
+      queryClient.invalidateQueries({ queryKey: boardKey })
+    },
   })
 
-  const updateCardMutation = useMutation({
+  const updateCardMutation = useMutation<
+    void,
+    unknown,
+    { cardId: string; patch: CardFieldPatch },
+    UpdateCardContext
+  >({
     mutationFn: ({
       cardId,
       patch,
@@ -58,85 +152,152 @@ export function useCardMutations(boardId: string) {
     onMutate: async ({ cardId, patch }) => {
       await queryClient.cancelQueries({ queryKey: boardKey })
       const previous = queryClient.getQueryData<BoardData>(boardKey)
-      queryClient.setQueryData<BoardData>(boardKey, (data) =>
-        data
-          ? {
-              ...data,
-              cards: data.cards.map((card) =>
-                card.id === cardId ? { ...card, ...patch } : card
-              ),
-            }
-          : data
-      )
-      return { previous }
+      const target = previous?.cards.find((card) => card.id === cardId)
+      if (!previous || !target) return null
+
+      const snapshot = snapshotCardFields(target, patch)
+      writeBoard((data) => ({
+        ...data,
+        cards: data.cards.map((card) =>
+          card.id === cardId ? { ...card, ...patch } : card
+        ),
+      }))
+      return {
+        snapshot,
+        // ویرایش فیلد هم یک نوشتن خوش‌بینانه است: تا قبل از تأیید سرور،
+        // realtime نباید مقدار کهنه‌ی همان کارت را روی این patch بگذارد
+        releaseTracking: trackOptimisticWrites(boardId, [cardId]),
+      }
     },
     onError: (error, _variables, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(boardKey, context.previous)
+      if (context) {
+        writeBoard((data) => ({
+          ...data,
+          cards: restoreCardFields(data.cards, context.snapshot),
+        }))
       }
       reportError(error, 'card.update')
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: boardKey }),
+    onSettled: (_data, _error, _variables, context) => {
+      context?.releaseTracking()
+      queryClient.invalidateQueries({ queryKey: boardKey })
+    },
   })
 
-  const removeCard = useMutation({
+  const removeCardMutation = useMutation<
+    void,
+    unknown,
+    string,
+    DeleteCardContext
+  >({
     mutationFn: (cardId: string) => deleteCard(cardId),
     onMutate: async (cardId) => {
       await queryClient.cancelQueries({ queryKey: boardKey })
       const previous = queryClient.getQueryData<BoardData>(boardKey)
-      queryClient.setQueryData<BoardData>(boardKey, (data) =>
-        data
-          ? { ...data, cards: data.cards.filter((card) => card.id !== cardId) }
-          : data
-      )
-      return { previous }
+      if (!previous) return null
+
+      const { cards, removed } = removeCardAt(previous.cards, cardId)
+      if (!removed) return null
+      writeBoard((data) => ({ ...data, cards }))
+
+      return {
+        removed,
+        releaseTracking: trackOptimisticWrites(boardId, [cardId]),
+      }
     },
     onError: (error, _cardId, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(boardKey, context.previous)
+      // کارت دقیقاً به همان اندیس قبلی برمی‌گردد
+      if (context) {
+        writeBoard((data) => ({
+          ...data,
+          cards: insertCardAt(data.cards, context.removed),
+        }))
       }
       reportError(error, 'card.delete')
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: boardKey }),
+    onSettled: (_data, _error, _cardId, context) => {
+      context?.releaseTracking()
+      queryClient.invalidateQueries({ queryKey: boardKey })
+    },
   })
 
-  // ورودی این mutation از قبل توسط لایه‌ی Drag & Drop محاسبه شده است
-  const moveCardMutation = useMutation({
-    mutationFn: (updates: CardPositionUpdate[]) => updateManyCardPositions(updates),
+  const moveCardMutation = useMutation<
+    void,
+    unknown,
+    CardPositionUpdate[],
+    MoveCardContext
+  >({
+    mutationFn: (updates: CardPositionUpdate[]) =>
+      // دو Drag پشت سر هم نباید هم‌زمان به سرور برسند، وگرنه ترتیب جابه‌جایی
+      // می‌تواند برعکس ثبت شود
+      runSerialized(boardId, () => updateManyCardPositions(updates)),
     onMutate: async (updates) => {
       await queryClient.cancelQueries({ queryKey: boardKey })
       const previous = queryClient.getQueryData<BoardData>(boardKey)
-      queryClient.setQueryData<BoardData>(boardKey, (data) =>
-        data
-          ? { ...data, cards: applyCardPositions(data.cards, updates) }
-          : data
-      )
-      return { previous }
+      if (!previous || updates.length === 0) return null
+
+      const snapshot = snapshotCardMove(previous.cards, updates)
+      writeBoard((data) => ({
+        ...data,
+        cards: applyCardPositions(data.cards, updates),
+      }))
+
+      return {
+        snapshot,
+        releaseTracking: trackOptimisticWrites(
+          boardId,
+          updates.map((update) => update.id)
+        ),
+      }
     },
     onError: (error, _updates, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(boardKey, context.previous)
+      // فقط همان کارت‌هایی برمی‌گردند که هنوز مقدار خوش‌بینانه‌ی ما را دارند
+      if (context) {
+        writeBoard((data) => ({
+          ...data,
+          cards: restoreCardPositions(data.cards, context.snapshot),
+        }))
       }
       reportError(error, 'card.move')
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: boardKey }),
+    onSettled: (_data, _error, _updates, context) => {
+      context?.releaseTracking()
+      queryClient.invalidateQueries({ queryKey: boardKey })
+    },
   })
+
+  const { mutate: mutateCreateCard } = createCardMutation
+  const { mutate: mutateUpdateCard } = updateCardMutation
+  const { mutate: mutateDeleteCard } = removeCardMutation
+  const { mutate: mutateMoveCard } = moveCardMutation
+
+  /**
+   * جای کارت جدید یک‌بار و از آخرین کش تعیین می‌شود و همان مقدار هم برای
+   * نمایش خوش‌بینانه و هم برای درج در سرور استفاده می‌شود؛ وگرنه کارت
+   * موقت و کارت واقعی دو position متفاوت می‌گیرند.
+   */
+  const createCard = useCallback(
+    ({ columnId, title }: { columnId: string; title: string }) => {
+      const data = queryClient.getQueryData<BoardData>(boardKey)
+      mutateCreateCard({
+        columnId,
+        title,
+        position: nextCardPosition(data?.cards ?? [], columnId),
+      })
+    },
+    [boardKey, mutateCreateCard, queryClient]
+  )
 
   // mutate های useMutation پایدار (useCallback) هستند؛ نام متغیرها عمداً
   // با نام‌های public متفاوت است تا تابع‌های لایه‌ی data-access را نپوشاند
-  const { mutate: mutateCreateCard } = createCardMutation
-  const { mutate: mutateUpdateCard } = updateCardMutation
-  const { mutate: mutateDeleteCard } = removeCard
-  const { mutate: mutateMoveCard } = moveCardMutation
-
   return useMemo(
     () => ({
-      createCard: mutateCreateCard,
+      createCard,
       updateCard: mutateUpdateCard,
       deleteCard: mutateDeleteCard,
       moveCard: mutateMoveCard,
     }),
-    [mutateCreateCard, mutateUpdateCard, mutateDeleteCard, mutateMoveCard]
+    [createCard, mutateUpdateCard, mutateDeleteCard, mutateMoveCard]
   )
 }
 

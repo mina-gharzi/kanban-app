@@ -104,18 +104,30 @@ export async function updateCard(cardId: string, patch: CardFieldPatch) {
   if (error) throw normalizeError(error)
 }
 
-/** جابه‌جایی گروهی کارت‌ها؛ در صورت خطا throw می‌کند تا لایه UI بتواند rollback کند. */
+/**
+ * جابه‌جایی گروهی کارت‌ها در **یک** درخواست.
+ *
+ * چرا upsert و نه چند update مستقل؟ چند update مستقل در تراکنش جدا اجرا
+ * می‌شوند؛ اگر یکی شکست بخورد، بقیه اعمال شده‌اند و UI بعد از rollback با
+ * سرور ناسازگار می‌ماند. یک bulk upsert یک دستور SQL در یک تراکنش است:
+ * یا همه‌ی سطرها جابه‌جا می‌شوند یا هیچ‌کدام.
+ *
+ * تمام idها از داده‌ی سرور می‌آیند، پس شاخه‌ی INSERT در ON CONFLICT اجرا
+ * نمی‌شود (و اگر روزی اجرا شد، شکست آن کل دستور را برمی‌گرداند، نه نیمی از آن).
+ */
 export async function updateManyCardPositions(updates: CardPositionUpdate[]) {
-  const results = await Promise.all(
-    updates.map((u) =>
-      supabase
-        .from('cards')
-        .update({ column_id: u.column_id, position: u.position })
-        .eq('id', u.id)
+  if (updates.length === 0) return
+  const { error } = await supabase
+    .from('cards')
+    .upsert(
+      updates.map((update) => ({
+        id: update.id,
+        column_id: update.column_id,
+        position: update.position,
+      })),
+      { onConflict: 'id' },
     )
-  )
-  const failed = results.find((result) => result.error)
-  if (failed?.error) throw normalizeError(failed.error)
+  if (error) throw normalizeError(error)
 }
 
 export async function addColumn(
@@ -146,13 +158,14 @@ export async function updateColumnTitle(columnId: string, title: string) {
   if (error) throw normalizeError(error)
 }
 
-/** جابه‌جایی گروهی ستون‌ها؛ در صورت خطا throw می‌کند تا لایه UI بتواند rollback کند. */
+/** جابه‌جایی گروهی ستون‌ها؛ یک درخواست و یک تراکنش (دلیلش مثل کارت‌ها). */
 export async function updateColumnPositions(updates: ColumnPositionUpdate[]) {
-  const results = await Promise.all(
-    updates.map((u) =>
-      supabase.from('columns').update({ position: u.position }).eq('id', u.id)
+  if (updates.length === 0) return
+  const { error } = await supabase
+    .from('columns')
+    .upsert(
+      updates.map((update) => ({ id: update.id, position: update.position })),
+      { onConflict: 'id' },
     )
-  )
-  const failed = results.find((result) => result.error)
-  if (failed?.error) throw normalizeError(failed.error)
+  if (error) throw normalizeError(error)
 }

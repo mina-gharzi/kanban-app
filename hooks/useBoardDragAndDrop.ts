@@ -9,6 +9,7 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core'
 import { planCardMove, planColumnMove } from '@/lib/board/layout'
+import { isTemporaryId } from '@/lib/board/optimistic'
 import type {
   Card,
   CardPositionUpdate,
@@ -56,6 +57,8 @@ export function useBoardDragAndDrop({
     (event: DragStartEvent) => {
       const card = cards.find((c) => c.id === event.active.id)
       if (card) {
+        // کارت در حال ذخیره، هنوز در سرور وجود ندارد؛ جابه‌جایی‌اش بی‌معناست
+        if (isTemporaryId(card.id)) return
         setActiveCard(card)
         return
       }
@@ -76,13 +79,19 @@ export function useBoardDragAndDrop({
       const activeId = String(active.id)
       const overId = String(over.id)
 
+      // ستونی که هنوز ذخیره نشده مقصد جاگزینی نیست: کارتِ در حال ذخیره
+      // نبودِ آن ستون در سرور باعث شکست نوشتن position می‌شد
+      if (isTemporaryId(overId)) return
+
       if (columns.some((column) => column.id === activeId)) {
+        if (isTemporaryId(activeId)) return
         const updates = planColumnMove(columns, activeId, overId)
         if (updates) onColumnMove(updates)
         return
       }
 
-      const updates = planCardMove(cards, activeId, overId)
+      if (isTemporaryId(activeId)) return
+      const updates = planCardMove(cards, columns, activeId, overId)
       if (updates) onCardMove(updates)
     },
     [cards, columns, onCardMove, onColumnMove]

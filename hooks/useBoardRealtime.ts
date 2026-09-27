@@ -8,6 +8,7 @@ import { ERROR_CODES } from '@/lib/errors/errorCodes'
 import { logError } from '@/lib/errors/logError'
 import type { BoardData, Card, Column } from '@/lib/board/types'
 import { queryKeys } from '@/lib/queries/keys'
+import { hasOptimisticWrite, pendingCreateKey } from '@/lib/queries/mutationQueue'
 import { supabase } from '@/lib/supabase/client'
 
 /** وضعیت اتصال realtime که UI به آن واکنش نشان می‌دهد. */
@@ -22,13 +23,22 @@ function toStatus(state: REALTIME_SUBSCRIBE_STATES): RealtimeStatus {
 }
 
 /**
- * Realtime دیگر منبع دوم موازی نیست: هر event فقط Query Cache بورد را
+ * Realtime دومین منبع موازی نیست: هر رویداد فقط Query Cache بورد را
  * به‌روز می‌کند و همان یک منبع، داده‌ی UI را می‌سازد.
- * ستون‌ها با filter برد محدود شده‌اند و کارت‌ها از طریق ستون‌های همین بورد
- * اعتبارسنجی می‌شوند تا رویداد بورد دیگر cache این بورد را تغییر ندهد.
  *
- * خطای اتصال: فقط یک‌بار در هر گذار به وضعیت خطا لاگ می‌شود و هیچ
- * toast تکراری ساخته نمی‌شود؛ UI یک نوار «در حال اتصال دوباره» نشان می‌دهد.
+ * هماهنگی با Optimistic Update — سه قاعده:
+ *
+ * ۱) تا وقتی یک نوشتن خوش‌بینانه روی رکوردی در جریان است، رویداد realtime
+ *    همان رکورد نادیده گرفته می‌شود. بدون این قاعده، مقدار کهنه‌ی سرور
+ *    پیش‌بینی ما را بازنویسی می‌کند و UI به عقب می‌پرد.
+ *    همگام‌سازی نهایی را `invalidateQueries` در `onSettled` انجام می‌دهد.
+ *
+ * ۲) INSERT کارتی که همین حالا در حال ساخت است نادیده گرفته می‌شود تا کارت
+ *    موقت و کارت واقعی دوبار در کش ننشینند؛ جایگزینی با پاسخ سرور کارِ
+ *    خودِ mutation است.
+ *
+ * ۳) کارت‌های این بورد از طریق ستون‌های همین بورد اعتبارسنجی می‌شوند تا
+ *    رویداد بورد دیگر cache این بورد را تغییر ندهد.
  */
 export function useBoardRealtime(boardId: string): RealtimeStatus {
   const queryClient = useQueryClient()
@@ -44,6 +54,8 @@ export function useBoardRealtime(boardId: string): RealtimeStatus {
         previous ? updater(previous) : previous
       )
     }
+    const writeInFlight = (ids: readonly string[]): boolean =>
+      hasOptimisticWrite(boardId, ids)
 
     const updateStatus = (next: RealtimeStatus, channelState: string) => {
       if (next === lastStatusRef.current) return
@@ -68,6 +80,8 @@ export function useBoardRealtime(boardId: string): RealtimeStatus {
         (payload) => {
           if (payload.eventType === 'INSERT') {
             const newCard = payload.new
+            // قاعده ۲: create در جریان، خودش رکورد را جایگزین می‌کند
+            if (writeInFlight([pendingCreateKey('card', newCard.column_id)])) return
             setBoardData((previous) => {
               const belongsToBoard = previous.columns.some(
                 (column) => column.id === newCard.column_id
@@ -82,6 +96,8 @@ export function useBoardRealtime(boardId: string): RealtimeStatus {
 
           if (payload.eventType === 'UPDATE') {
             const updatedCard = payload.new
+            // قاعده ۱: نوشتن خوش‌بینانه در جریان، مالک این رکورد است
+            if (writeInFlight([updatedCard.id])) return
             setBoardData((previous) => {
               const belongsToBoard = previous.columns.some(
                 (column) => column.id === updatedCard.column_id
@@ -99,6 +115,7 @@ export function useBoardRealtime(boardId: string): RealtimeStatus {
           if (payload.eventType === 'DELETE') {
             const deletedId = payload.old.id
             if (!deletedId) return
+            if (writeInFlight([deletedId])) return
             setBoardData((previous) => ({
               ...previous,
               cards: previous.cards.filter((card) => card.id !== deletedId),
@@ -117,6 +134,10 @@ export function useBoardRealtime(boardId: string): RealtimeStatus {
         (payload) => {
           if (payload.eventType === 'INSERT') {
             const newColumn = payload.new
+            // قاعده ۲: create ستون در جریان، خودش رکورد را جایگزین می‌کند.
+            // کلید روی بورد است چون INSERT شناسه‌ی واقعی ستون را دارد، نه
+            // شناسه‌ی موقتی که ما ساخته‌ایم.
+            if (writeInFlight([pendingCreateKey('column', boardId)])) return
             setBoardData((previous) => {
               const alreadyKnown = previous.columns.some(
                 (column) => column.id === newColumn.id
@@ -128,6 +149,7 @@ export function useBoardRealtime(boardId: string): RealtimeStatus {
 
           if (payload.eventType === 'UPDATE') {
             const updatedColumn = payload.new
+            if (writeInFlight([updatedColumn.id])) return
             setBoardData((previous) => ({
               ...previous,
               columns: previous.columns.map((column) =>
@@ -139,6 +161,7 @@ export function useBoardRealtime(boardId: string): RealtimeStatus {
           if (payload.eventType === 'DELETE') {
             const deletedId = payload.old.id
             if (!deletedId) return
+            if (writeInFlight([deletedId])) return
             setBoardData((previous) => ({
               ...previous,
               columns: previous.columns.filter(

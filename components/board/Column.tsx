@@ -8,6 +8,7 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import type { CardMutations } from '@/hooks/useCardMutations'
 import type { ColumnMutations } from '@/hooks/useColumnMutations'
 import { validateTitle } from '@/lib/board/validation'
+import { isTemporaryId } from '@/lib/board/optimistic'
 import type { Card, Column as ColumnType } from '@/lib/board/types'
 import AddCardForm from './AddCardForm'
 import CardComponent from './Card'
@@ -29,7 +30,15 @@ function Column({
   columnMutations,
   onOpenCard,
 }: Props) {
-  const { setNodeRef: setDroppableRef } = useDroppable({ id: column.id })
+  // ستونی که هنوز از سرور نیامده: نه جابه‌جا می‌شود، نه عنوانش عوض می‌شود،
+  // نه حذف می‌شود و نه کارت تازه می‌گیرد (کارت در ستونِ ناموجود در سرور
+  // شکست می‌خورد)
+  const isPending = isTemporaryId(column.id)
+
+  const { setNodeRef: setDroppableRef } = useDroppable({
+    id: column.id,
+    disabled: isPending,
+  })
 
   const {
     attributes,
@@ -38,12 +47,16 @@ function Column({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: column.id, data: { type: 'column' } })
+  } = useSortable({
+    id: column.id,
+    data: { type: 'column' },
+    disabled: isPending,
+  })
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isPending ? 0.6 : isDragging ? 0.5 : 1,
   }
 
   const [isEditingTitle, setIsEditingTitle] = useState(false)
@@ -126,20 +139,25 @@ function Column({
             <h3
               className="text-surface font-medium text-sm truncate"
               title={column.title}
-              onDoubleClick={() => setIsEditingTitle(true)}
+              onDoubleClick={() => {
+                if (isPending) return
+                setIsEditingTitle(true)
+              }}
             >
               {column.title}
               <span className="text-surface/50 mr-2">({cards.length})</span>
             </h3>
           )}
         </div>
-        <button
-          onClick={() => columnMutations.deleteColumn(column.id)}
-          aria-label={`حذف ستون ${column.title}`}
-          className="text-accent text-xs shrink-0 hover:opacity-70"
-        >
-          حذف
-        </button>
+        {!isPending && (
+          <button
+            onClick={() => columnMutations.deleteColumn(column.id)}
+            aria-label={`حذف ستون ${column.title}`}
+            className="text-accent text-xs shrink-0 hover:opacity-70"
+          >
+            حذف
+          </button>
+        )}
       </div>
 
       <div className="flex-1 min-h-2.5">
@@ -158,11 +176,13 @@ function Column({
         </SortableContext>
       </div>
 
-      <AddCardForm
-        onAdd={(title) =>
-          cardMutations.createCard({ columnId: column.id, title })
-        }
-      />
+      {!isPending && (
+        <AddCardForm
+          onAdd={(title) =>
+            cardMutations.createCard({ columnId: column.id, title })
+          }
+        />
+      )}
     </div>
   )
 }

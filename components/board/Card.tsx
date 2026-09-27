@@ -2,6 +2,7 @@
 
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { isTemporaryId } from '@/lib/board/optimistic'
 import type { Card as CardType } from '@/lib/board/types'
 import { getDueDateStatus, formatDueDate } from '@/lib/dueDate'
 
@@ -11,8 +12,11 @@ type Props = {
 }
 
 export default function Card({ card, onOpen }: Props) {
+  // کارتی که هنوز از سرور نیامده جابه‌جا یا ویرایش نمی‌شود؛ شناسه‌اش موقت است
+  const isPending = isTemporaryId(card.id)
+
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: card.id })
+    useSortable({ id: card.id, disabled: isPending })
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -25,6 +29,9 @@ export default function Card({ card, onOpen }: Props) {
   function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
     if (event.key !== 'Enter' && event.key !== ' ') return
     event.preventDefault()
+    // کارت در حال ذخیره در سرور وجود ندارد؛ modal بازکردن یعنی ویرایشِ
+    // رکوردی که هرگز ذخیره نمی‌شود
+    if (isPending) return
     onOpen?.(card.id)
   }
 
@@ -34,9 +41,17 @@ export default function Card({ card, onOpen }: Props) {
       style={style}
       {...attributes}
       {...listeners}
-      onClick={() => onOpen?.(card.id)}
+      onClick={() => {
+        if (isPending) return
+        onOpen?.(card.id)
+      }}
       onKeyDown={handleKeyDown}
-      className="bg-card text-surface rounded-lg mb-2 shadow cursor-grab active:cursor-grabbing overflow-hidden"
+      aria-busy={isPending}
+      className={`bg-card text-surface rounded-lg mb-2 shadow overflow-hidden ${
+        isPending
+          ? 'opacity-60 cursor-default'
+          : 'cursor-grab active:cursor-grabbing'
+      }`}
     >
       {card.label_color && (
         <div className="h-1.5 w-full" style={{ backgroundColor: card.label_color }} />
