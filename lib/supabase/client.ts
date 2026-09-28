@@ -7,10 +7,9 @@ import { createBrowserClient } from '@supabase/ssr'
  * `@supabase/supabase-js`؟
  *
  * نشست (session) این‌جا در کوکی ذخیره می‌شود، نه فقط `localStorage`.
- * بدون این، middleware — که روی Edge اجرا می‌شود و اصلاً به
- * `localStorage` مرورگر دسترسی ندارد — هیچ‌وقت نمی‌توانست بفهمد کاربر
- * لاگین کرده یا نه، و محافظت سمت سرور از روت‌ها (`middleware.ts`)
- * اصلاً ممکن نبود.
+ * بدون این، middleware — که خارج از runtime اصلی اپ اجرا می‌شود و اصلاً به
+ * `localStorage` مرورگر دسترسی ندارد — هیچ‌وقت نمی‌توانست بفهمد کاربر لاگین
+ * کرده یا نه، و محافظت سمت سرور از روت‌ها اصلاً ممکن نبود.
  *
  * رفتار قابل‌مشاهده برای بقیه‌ی کد بدون تغییر می‌ماند: همان متدهای
  * `auth.getSession`, `auth.onAuthStateChange`, `.from(...)`, `.channel(...)`

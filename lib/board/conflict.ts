@@ -34,8 +34,21 @@ export const CARD_FIELD_LABELS: Record<EditableCardField, string> = {
 export function readCardFields(card: Card): CardEditValues {
   return {
     title: card.title,
-    description: card.description ?? null,
-    due_date: card.due_date ?? null,
+    // نرمال‌سازی رشته‌ی خالی، وگرنه این تابع با readDraftFields ناهماهنگ می‌شد.
+    //
+    // ریشه‌ی اختلاف: توضیح قبلیِ همین فایل می‌گفت «سرور null برمی‌گرداند» و
+    // به همین دلیل نگاشت `?? null` کافی است. آزمون زنده این ادعا را رد کرد:
+    // ستون `description` در دیتابیس واقعی NOT NULL ندارد و رشته‌ی خالی را
+    // *عیناً* نگه می‌دارد و برمی‌گرداند (تأیید شده با INSERT و خواندن مجدد).
+    //
+    // اثر ناهماهنگی: اگر روزی داده‌ای با مقدار خالی وجود داشته باشد (داده‌ی
+    // کهنه یا نوشته‌ی بیرونی)، آن‌وقت `base` مقدار خالی می‌گیرد ولی
+    // `readDraftFields` برای همان فیلد null می‌دهد. شرط سه‌گانه‌ی تعارض
+    // (draft ≠ base و server ≠ base و server ≠ draft) آن‌گاه برای فیلدی که
+    // کاربر اصلاً دستش نزده true می‌شود ⇒ تعارض الیگی به کاربر نشان داده
+    // می‌شود. نگاشت یکسان در هر دو تابع، این دسته‌ی خطا را حذف می‌کند.
+    description: card.description === '' ? null : (card.description ?? null),
+    due_date: card.due_date === '' ? null : (card.due_date ?? null),
   }
 }
 

@@ -45,7 +45,7 @@ export default function AppHeader({
         )}
 
         <Link
-          href="/"
+          href="/boards"
           className="flex shrink-0 items-center gap-2 rounded-md text-text transition-opacity hover:opacity-80"
         >
           <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-on-primary">

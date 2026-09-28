@@ -77,7 +77,7 @@ export default function BoardSidebar({ onNavigate }: Props) {
 
       <div className="border-t border-border p-2">
         <Link
-          href="/"
+          href="/boards"
           onClick={onNavigate}
           className={buttonClass({
             variant: 'ghost',

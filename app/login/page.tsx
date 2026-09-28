@@ -19,7 +19,7 @@ export default function LoginPage() {
     event.preventDefault()
     signIn(
       { email, password },
-      { onSuccess: () => router.push('/') }
+      { onSuccess: () => router.push('/boards') }
     )
   }
 

@@ -13,14 +13,15 @@ import { updateSession } from '@/lib/supabase/middleware'
  *   - middleware  → جلوی رندرِ لحظه‌ای صفحه‌ی محافظت‌شده را قبل از هیدریت می‌گیرد
  *   - AuthGuard    → نشستِ منقضی‌شده‌ی وسط استفاده را می‌گیرد
  *
- * لیست‌سفید عمدی است: مسیر تازه‌ای که فراموش شود اضافه شود، پیش‌فرض به
- * «محافظت‌نشده» می‌افتد نه برعکس — چون `isProtectedPath` صراحتاً true
- * برمی‌گرداند، نه false.
+ * `/` از این‌جا به بعد صفحه‌ی معرفیِ عمومی است، نه فهرست بوردها؛ فهرست
+ * بوردها به `/boards` منتقل شده. `isProtectedPath` عمداً با
+ * `startsWith('/board')` نوشته شده تا هم `/boards` و هم `/board/[id]` را
+ * با یک شرط بگیرد.
  */
-const AUTH_PAGES = new Set(['/login', '/register'])
+const REDIRECT_IF_AUTHED = new Set(['/', '/login', '/register'])
 
 function isProtectedPath(pathname: string): boolean {
-  return pathname === '/' || pathname.startsWith('/board')
+  return pathname.startsWith('/board')
 }
 
 export async function middleware(request: NextRequest) {
@@ -33,9 +34,10 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl)
   }
 
-  // کاربرِ لاگین‌کرده که سراغ فرم ورود/ثبت‌نام می‌رود: نیازی به آن صفحه ندارد
-  if (user && AUTH_PAGES.has(pathname)) {
-    return NextResponse.redirect(new URL('/', request.url))
+  // کاربرِ لاگین‌کرده که سراغ صفحه‌ی معرفی یا فرم ورود/ثبت‌نام می‌رود:
+  // این صفحات برایش کاری ندارند، مستقیم به بوردهایش می‌رود
+  if (user && REDIRECT_IF_AUTHED.has(pathname)) {
+    return NextResponse.redirect(new URL('/boards', request.url))
   }
 
   // `response` همان چیزی است که `updateSession` ساخته و کوکی‌های رفرش‌شده

@@ -132,12 +132,17 @@ export function useBoardRealtime(boardId: string): RealtimeStatus {
         // فقط روی گذار به خطا لاگ می‌شود، نه هر بار که همان خطا تکرار شود؛
         // وگرنه هر تلاش ناموفق پشت‌سرهم کنسول را پر می‌کرد.
         if (changed) {
+          // severity = 'warning' و نه 'error': همین شاخه بلافاصله
+          // `scheduleRetry()` را صدا می‌زند، پس این وضعیت در طراحیِ فعلی
+          // *گذرا* است نه خرابی. گزارشش با شدتِ error هم دروغ می‌گوید و هم
+          // alertهای واقعی را زیر این نویز گذرا گم می‌کند.
           logError(
             new AppError({
               code: ERROR_CODES.NETWORK,
               message: `realtime channel "${channelState}"`,
             }),
-            'board.realtime'
+            'board.realtime',
+            { severity: 'warning' }
           )
         }
         scheduleRetry()

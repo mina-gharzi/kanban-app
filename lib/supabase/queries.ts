@@ -17,6 +17,42 @@ import type {
  * می‌شود، بنابراین هیچ کامپوننتی خطای Supabase را نمی‌بیند.
  */
 
+/**
+ * تضمین اینکه یک write واقعاً سطری را تغییر داده است.
+ *
+ * چرا لازم است — این یک تله‌ی مستندشده‌ی PostgREST است:
+ *
+ *   update(...).eq('id', x)   ← بدون `.select()`
+ *   delete(...).eq('id', x)
+ *
+ * با `Prefer: return=minimal` پاسخ بدن خالی است و کتابخانه
+ * `{ data: null, error: null }` برمی‌گرداند (`PostgrestBuilder.ts`،
+ * شاخه‌ی `body === ''`). یعنی «۱ سطر تغییر کرد»، «۰ سطر تغییر کرد» و
+ * «سطر اصلاً برای من قابل دیدن نبود» **همه یکسان** به نظر می‌رسند.
+ *
+ * RLS هم به این سه‌گانه اضافه نمی‌شود: RLS یک `WHERE` به همان UPDATE
+ * اضافه می‌کند، پس سطر غیرمجاز صرفاً «پیدا نمی‌شود» و خطایی هم تولید
+ * نمی‌شود. یعنی کاربری که به سطر دیگری دست می‌زند سکوت می‌بیند، نه 403.
+ *
+ * بدون این بررسی، سناریوی «کلاینت A کارت را ویرایش می‌کند، کلاینت B
+ * همان لحظه ستون را حذف می‌کند» باعث می‌شد ویرایش بی‌صدا گم شود، UI
+ * موفقیت نشان دهد و rollback هرگز اجرا نشود.
+ *
+ * کدِ خطا عمداً `NOT_FOUND` است و نه `AUTHORIZATION`: این دو از هم
+ * تفکیک‌ناپذیرند و گفتنِ «هست ولی مال تو نیست» به یک attacker یک
+ * existence oracle می‌دهد.
+ */
+export function assertRowsAffected(
+  rows: readonly unknown[] | null,
+  operation: string
+): void {
+  if (rows && rows.length > 0) return
+  throw new AppError({
+    code: ERROR_CODES.NOT_FOUND,
+    message: `${operation}: no row was affected (it is missing, or RLS hid it)`,
+  })
+}
+
 export async function getBoardData(boardId: string): Promise<BoardData> {
   const { data: columns, error: colError } = await supabase
     .from('columns')
@@ -71,8 +107,13 @@ export async function createBoard(title: string): Promise<Board> {
 }
 
 export async function deleteBoard(boardId: string) {
-  const { error } = await supabase.from('boards').delete().eq('id', boardId)
+  const { data, error } = await supabase
+    .from('boards')
+    .delete()
+    .eq('id', boardId)
+    .select('id')
   if (error) throw normalizeError(error)
+  assertRowsAffected(data, 'deleteBoard')
 }
 
 export async function addCard(
@@ -91,17 +132,24 @@ export async function addCard(
 }
 
 export async function deleteCard(cardId: string) {
-  const { error } = await supabase.from('cards').delete().eq('id', cardId)
+  const { data, error } = await supabase
+    .from('cards')
+    .delete()
+    .eq('id', cardId)
+    .select('id')
   if (error) throw normalizeError(error)
+  assertRowsAffected(data, 'deleteCard')
 }
 
 /** ویرایش فیلدهای کارت (عنوان، توضیحات، لیبل، تاریخ سررسید) در یک درخواست. */
 export async function updateCard(cardId: string, patch: CardFieldPatch) {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('cards')
     .update(patch)
     .eq('id', cardId)
+    .select('id')
   if (error) throw normalizeError(error)
+  assertRowsAffected(data, 'updateCard')
 }
 
 /**
@@ -152,16 +200,23 @@ export async function addColumn(
 }
 
 export async function deleteColumn(columnId: string) {
-  const { error } = await supabase.from('columns').delete().eq('id', columnId)
+  const { data, error } = await supabase
+    .from('columns')
+    .delete()
+    .eq('id', columnId)
+    .select('id')
   if (error) throw normalizeError(error)
+  assertRowsAffected(data, 'deleteColumn')
 }
 
 export async function updateColumnTitle(columnId: string, title: string) {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('columns')
     .update({ title })
     .eq('id', columnId)
+    .select('id')
   if (error) throw normalizeError(error)
+  assertRowsAffected(data, 'updateColumnTitle')
 }
 
 /**
