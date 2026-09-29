@@ -80,6 +80,8 @@ function Column({
   const isFilteredOut = cards.length > 0 && visibleCards.length === 0
 
   return (
+    // `h-full` اینجا عمداً نیست؛ ارتفاعِ درصدی یعنی height صریح و
+    // `align-items: stretch` دیگر ستون را قد نمی‌کشد.
     <div className="flex w-72 shrink-0 flex-col">
       <div
         ref={(node) => {
@@ -89,13 +91,17 @@ function Column({
         style={style}
         aria-label={`ستون ${column.title}`}
         className={[
-          'flex flex-col rounded-xl border bg-surface-2/60 p-2',
-          'transition-colors duration-150',
-          // حین Drag ستون فقط محو می‌شود؛ DragOverlay جای آن را می‌گیرد
-          isDragging ? 'opacity-40' : 'opacity-100',
-          isPending ? 'opacity-60' : 'opacity-100',
-          // هایلایت شدن ستون به‌عنوان مقصد Drop
-          isOver ? 'border-primary bg-primary-soft/40' : 'border-border',
+          'flex min-h-0 flex-1 flex-col rounded-lg border p-2',
+          'transition-colors duration-150 ease-out-soft',
+          // حین Drag ستون فقط محو می‌شود؛ DragOverlay جای آن را می‌گیرد.
+          // اولویت با Drag است و `opacity-60`/`opacity-100` نباید هم‌زمان
+          // در کلاس‌ها بیایند (کلاس آخر می‌برد و کم‌رنگی pending گم می‌شد).
+          isDragging ? 'opacity-40' : isPending ? 'opacity-60' : 'opacity-100',
+          // هایلایت شدن ستون به‌عنوان مقصد Drop. `primary` روی well یکی از
+          // سه کاربرد تأییدشده‌ی آن است (DESIGN_PLAN.md §۳.۴).
+          isOver
+            ? 'border-primary bg-primary-soft/50'
+            : 'border-border bg-surface-2/60',
         ].join(' ')}
       >
         <ColumnHeader
@@ -119,13 +125,13 @@ function Column({
           {/* جای خالی: هم بورد تازه را صمیمی می‌کند، هم هدف Drop را
               قابل تشخیص می‌سازد (به‌جای فضای صفر که غیرقابل کلیک است) */}
           {isFilteredOut ? (
-            <p className="px-1 py-3 text-center text-xs text-text-muted">
+            <p className="px-1 py-3 text-center text-meta text-text-muted">
               کارتی با این فیلترها نیست
             </p>
           ) : cards.length === 0 ? (
-            <div className="flex flex-col items-center gap-1.5 rounded-lg border border-dashed border-border-2 px-2 py-5 text-center">
+            <div className="flex flex-1 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border-2 px-2 py-6 text-center">
               <PlusIcon size={16} className="text-text-muted" />
-              <p className="text-xs text-text-muted">هنوز کارتی اینجا نیست</p>
+              <p className="text-meta text-text-muted">هنوز کارتی اینجا نیست</p>
             </div>
           ) : null}
         </div>

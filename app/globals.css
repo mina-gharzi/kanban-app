@@ -1,6 +1,63 @@
 @import "tailwindcss";
 
 /* ==========================================================================
+   Font — Pinar (self-hosted)
+   --------------------------------------------------------------------------
+   فایل‌ها در `public/font/` هستند و مستقیم از همان‌جا سرو می‌شوند.
+   عمداً `@font-face` دستی است، نه `next/font/local`: در این نصب
+   (Next 16.3.6) لودر فونت محلی Turbopack ماژول داخلی خودش را پیدا
+   نمی‌کند و هر فراخوانی `localFont()` با خطای build می‌شکند —
+   `Module not found: '@vercel/turbopack-next/internal/font/local/
+   cssmodule.module.css'`. چون فایل‌ها از قبل داخل `public` هستند،
+   سرو شدنشان هیچ هزینه‌ای ندارد.
+
+   وزن‌ها از روی `OS/2.usWeightClass` خود فایل‌ها خوانده شده‌اند:
+   `Regular=400`, `Medium=500`, `Bold=700`, `ExtraBold=800`.
+   نام خانواده در جدول `name` هر فایل وزن را در خود دارد
+   (`Pinar DS3-Regular`, `Pinar Medium`, ...) ولی `@font-face` نام
+   خانواده را از خودِ CSS می‌گیرد، پس هر چهار وزن زیر یک نام واحد
+   `Pinar` جمع می‌شوند.
+
+   طراحی از وزن‌های ۴۰۰، ۵۰۰ و ۶۰۰ استفاده می‌کند و چون ۶۰۰ وجود
+   ندارد مرورگر نزدیک‌ترین وزن یعنی ۷۰۰ را برایش می‌گیرد.
+
+   `font-display: swap` + preload وزن‌های ۴۰۰ و ۷۰۰ در `layout.tsx`
+   یعنی متن هیچ‌وقت با فونت جایگزین رندر نمی‌شود. فونت `size-adjust`
+   ندارد، پس اگر روزی فونت جایگزین لازم شد باید دستی ساخته شود.
+
+   اگر روزی وزن ۶۰۰ لازم شد باید فایلش به `public/font/` اضافه و
+   اینجا ثبت شود، وگرنه مرورگر ۷۰۰ را جایگزین می‌کند.
+   ========================================================================== */
+@font-face {
+  font-family: "Pinar";
+  src: url("/font/PINAR-DS3-REGULAR.TTF") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Pinar";
+  src: url("/font/PINAR-MEDIUM.TTF") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Pinar";
+  src: url("/font/PINAR-BOLD.TTF") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Pinar";
+  src: url("/font/PINAR-DS3-EXTRABOLD (2).TTF") format("truetype");
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ==========================================================================
    Design System — Kanban
    --------------------------------------------------------------------------
    قاعده: هیچ رنگی داخل Component hard-code نمی‌شود. همه‌ی رنگ‌ها از
@@ -30,59 +87,105 @@
      هماهنگ می‌کند و React چیزی برای مقایسه پیدا نمی‌کند. */
   color-scheme: light;
 
-  --bg: 246 247 249;
-  --surface: 255 255 255;
-  --surface-2: 241 243 246;
-  --surface-3: 232 235 240;
-  --border: 226 230 236;
-  --border-2: 205 212 222;
-  --text: 16 21 31;
-  --text-2: 82 92 112;
-  --text-muted: 130 140 158;
-  --primary: 59 91 219;
-  --primary-hover: 48 78 197;
-  --primary-soft: 238 241 254;
-  --on-primary: 255 255 255;
-  --success: 16 122 90;
-  --warning: 148 88 6;
-  --danger: 192 38 56;
-  --danger-soft: 253 236 238;
-  --info: 26 105 148;
-  --ring: 59 91 219;
-  --overlay: 15 20 30;
+  /* مقادیر زیر محاسبه و اعتبارسنجی شده‌اند، نه سلیقه‌ای انتخاب شده.
+     روش حل و ۷۸ بررسی: DESIGN_PLAN.md §۳ */
 
-  /* سایه‌ها: subtle. عمق با Background/Border/Spacing ساخته می‌شود، نه با سایه */
+  /* --- رمپ سطوح: page → column well → card --- */
+  --bg: 235 239 245; /* #EBEFF5 */
+  --surface: 252 255 255; /* #FCFFFF  کارت، پنل، مودال */
+  --surface-2: 214 218 224; /* #D6DAE0  بدنهٔ ستون (@60%)، چیپ، فیلد */
+  --surface-3: 204 207 213; /* #CCCFD5  فیلد hover */
+
+  --border: 190 201 216; /* #BEC9D8  1.67:1 روی کارت */
+  --border-2: 154 168 188; /* #9AA8BC  2.40:1 روی کارت */
+
+  /* --- سه پلهٔ متن، با فاصلهٔ روشن از هم --- */
+  --text: 15 20 28; /* #0F141C  18.37:1 روی کارت */
+  --text-2: 51 60 75; /* #333C4B  11.06:1 روی کارت */
+  --text-muted: 80 89 102; /* #505966  7.05:1 روی کارت */
+
+  /* --- primary: teal-cyan. با لیبل‌های red/green/amber/purple اشتباه نمی‌شود --- */
+  --primary: 14 106 120; /* #0E6A78  6.23:1 روی کارت */
+  --primary-hover: 10 84 97; /* #0A5461 */
+  --primary-soft: 220 237 240; /* #DCEDF0 */
+  --on-primary: 255 255 255; /* #FFFFFF  6.27:1 روی primary */
+
+  --success: 15 107 78; /* #0F6B4E */
+  --warning: 134 84 3; /* #865403 */
+  --danger: 179 38 58; /* #B3263A  6.42:1 روی کارت */
+  --danger-hover: 156 31 48; /* #9C1F30  7.92:1 با on-danger */
+  --danger-soft: 251 231 234; /* #FBE7EA */
+  --on-danger: 255 255 255; /* #FFFFFF  متن روی danger پررنگ */
+  --info: 20 101 127; /* #14657F */
+  --ring: 14 106 120; /* #0E6A78 — هم‌خانوادهٔ primary */
+  --overlay: 17 24 35; /* #111823 */
+
+  /* سایه‌ها: subtle. عمق با Background/Border/Spacing ساخته می‌شود، نه با سایه.
+     کارت تنها عنصری است که elev-xs می‌گیرد؛ مودال تنها عنصری که elev-lg. */
   --elev-xs: 0 1px 2px rgb(16 21 31 / 0.05);
   --elev-sm: 0 1px 3px rgb(16 21 31 / 0.07), 0 1px 2px rgb(16 21 31 / 0.04);
   --elev-md: 0 4px 12px rgb(16 21 31 / 0.08), 0 1px 3px rgb(16 21 31 / 0.05);
   --elev-lg: 0 12px 32px rgb(16 21 31 / 0.12), 0 2px 8px rgb(16 21 31 / 0.06);
   --elev-drag: 0 16px 40px rgb(16 21 31 / 0.18), 0 4px 12px rgb(16 21 31 / 0.1);
+
+  /* --- مقیاس تایپوگرافی (DESIGN_PLAN.md §۴) ---
+     line-height بلندتر از پیش‌فرض است چون پینار در ارتفاع خط فشرده
+     نقطه‌ها و کسره‌ها را می‌بلعد. */
+  --text-display: 30px;
+  --text-display-lh: 44px;
+  --text-title: 20px;
+  --text-title-lh: 30px;
+  --text-heading: 16px;
+  --text-heading-lh: 26px;
+  --text-subtitle: 15px;
+  --text-subtitle-lh: 24px;
+  --text-body: 14px;
+  --text-body-lh: 24px;
+  --text-meta: 13px;
+  --text-meta-lh: 21px;
+  --text-chip: 12px;
+  --text-chip-lh: 18px;
+
+  /* فاصلهٔ حروف روی خط فارسی همیشه normal است؛ قاعدهٔ اجرایی آن
+     در انتهای همین فایل و بیرون از layer تعریف شده است. */
 }
 
 /* --- تاریک --- */
 .dark {
   color-scheme: dark;
 
-  --bg: 13 17 23;
-  --surface: 21 27 36;
-  --surface-2: 27 34 45;
-  --surface-3: 34 43 56;
-  --border: 38 47 60;
-  --border-2: 54 65 82;
-  --text: 232 237 245;
-  --text-2: 163 176 194;
-  --text-muted: 118 131 150;
-  --primary: 123 140 255;
-  --primary-hover: 143 157 255;
-  --primary-soft: 32 39 66;
-  --on-primary: 15 20 32;
-  --success: 62 207 154;
-  --warning: 229 169 75;
-  --danger: 255 107 125;
-  --danger-soft: 56 28 33;
-  --info: 89 182 224;
-  --ring: 123 140 255;
-  --overlay: 4 6 10;
+  /* رمپ در تم تاریک صعودی است: با ارتفاع، روشن‌تر.
+     الزام هندسی (DESIGN_PLAN.md §۳):  s2 ≥ bg + 19
+     با bg = 4.4  ⇒  s2 ≥ 23.4؛ مقدار 23.8 حاشیهٔ گرد‌کردن ۸ بیت را دارد. */
+
+  --bg: 14 15 18; /* #0E0F12 */
+  --surface: 44 47 54; /* #2C2F36  کارت */
+  --surface-2: 53 57 64; /* #353940  بدنهٔ ستون (@60%)، چیپ */
+  --surface-3: 57 61 69; /* #393D45  فیلد hover */
+
+  --border: 61 76 96; /* #3D4C60  1.53:1 روی کارت */
+  --border-2: 90 108 130; /* #5A6C82  2.49:1 روی کارت */
+
+  --text: 233 238 246; /* #E9EEF6  11.50:1 روی کارت */
+  --text-2: 179 190 206; /* #B3BECE  7.13:1 روی کارت */
+  --text-muted: 138 151 171; /* #8A97AB  4.53:1 روی کارت */
+
+  --primary: 63 192 204; /* #3FC0CC  6.14:1 روی کارت */
+  --primary-hover: 99 210 219; /* #63D2DB */
+  --primary-soft: 16 51 58; /* #10333A */
+  --on-primary: 5 39 44; /* #05272C  7.22:1 روی primary */
+
+  --success: 63 191 140; /* #3FBF8C */
+  --warning: 217 164 65; /* #D9A441 */
+  --danger: 242 109 126; /* #F26D7E  4.64:1 روی کارت */
+  --danger-hover: 245 138 152; /* #F58A98  7.78:1 با on-danger */
+  --danger-soft: 58 26 33; /* #3A1A21 */
+  /* در تم تاریک danger خودش روشن است، پس متنِ روی آن باید تیره باشد.
+     با متن سفید این جفت فقط 2.89:1 می‌شد — یعنی عملاً ناخوانا. */
+  --on-danger: 42 11 16; /* #2A0B10  6.30:1 روی danger */
+  --info: 92 182 216; /* #5CB6D8 */
+  --ring: 63 192 204; /* #3FC0CC */
+  --overlay: 3 6 10; /* #03060A */
 
   --elev-xs: 0 1px 2px rgb(0 0 0 / 0.3);
   --elev-sm: 0 1px 3px rgb(0 0 0 / 0.4), 0 1px 2px rgb(0 0 0 / 0.3);
@@ -112,19 +215,41 @@
   --color-success: rgb(var(--success));
   --color-warning: rgb(var(--warning));
   --color-danger: rgb(var(--danger));
+  --color-danger-hover: rgb(var(--danger-hover));
   --color-danger-soft: rgb(var(--danger-soft));
+  --color-on-danger: rgb(var(--on-danger));
   --color-info: rgb(var(--info));
   --color-overlay: rgb(var(--overlay) / 0.55);
 
-  /* شعاع: فقط سه سطح + full. rounded-xl/2xl تصادفی ممنوع */
-  --radius-xs: 0.25rem;
-  --radius-sm: 0.375rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
-  --radius-xl: 1rem;
+  /* شعاع: نقش‌محاسبه. rounded تصادفی ممنوع؛ full فقط برای دایرهٔ واقعی.
+     (DESIGN_PLAN.md §۷) */
+  --radius-xs: 0.25rem; /* 4px  آیکن‌کد، badge کوچک */
+  --radius-sm: 0.375rem; /* 6px  چیپ، چیپ برچسب */
+  --radius-md: 0.5rem; /* 8px  ورودی، دکمهٔ کوچک */
+  --radius-lg: 0.75rem; /* 12px کارت، پنل */
+  --radius-xl: 1rem; /* 16px مودال، Drawer */
 
-  /* فاصله: ۴ پایه (4/8/12/16/20/24/32/40/48) — Tailwind پیش‌فرض همین است */
+  /* فاصله: ۴ پایه — Tailwind پیش‌فرض همین است.
+     فاصلهٔ داخلی با شعاع هم‌خوان است: کارت 12px، مودال 16px، چیپ 4px.
+     (DESIGN_PLAN.md §۶) */
   --spacing: 0.25rem;
+
+  /* مقیاس تایپوگرافی: جایگزین هر arbitrary size.
+     line-height جداست تا هر نقش ارتفاع خط خودش را داشته باشد. */
+  --text-display: var(--text-display);
+  --text-display--line-height: var(--text-display-lh);
+  --text-title: var(--text-title);
+  --text-title--line-height: var(--text-title-lh);
+  --text-heading: var(--text-heading);
+  --text-heading--line-height: var(--text-heading-lh);
+  --text-subtitle: var(--text-subtitle);
+  --text-subtitle--line-height: var(--text-subtitle-lh);
+  --text-body: var(--text-body);
+  --text-body--line-height: var(--text-body-lh);
+  --text-meta: var(--text-meta);
+  --text-meta--line-height: var(--text-meta-lh);
+  --text-chip: var(--text-chip);
+  --text-chip--line-height: var(--text-chip-lh);
 
   --shadow-xs: var(--elev-xs);
   --shadow-sm: var(--elev-sm);
@@ -132,9 +257,9 @@
   --shadow-lg: var(--elev-lg);
   --shadow-drag: var(--elev-drag);
 
-  --font-sans: var(--font-vazirmatn), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Pinar", ui-sans-serif, system-ui, sans-serif;
 
-  /* Motion: سریع و طبیعی. animation تزئینی ممنوع */
+  /* Motion: سریع و طبیعی. animation تزئینی ممنوع (DESIGN_PLAN.md §۸) */
   --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -230,4 +355,26 @@
   .tabular {
     font-variant-numeric: tabular-nums;
   }
+
+  /* اعداد فارسی در جایی که font-feature لازم است */
+  .num-fa {
+    font-feature-settings: "ss02";
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   فاصلهٔ حروف روی خط فارسی هرگز تنظیم نمی‌شود. (DESIGN_PLAN.md §۴.۳)
+
+   این قاعده عمداً بیرون از هر layer نوشته شده است: در Tailwind v4
+   utilityها داخل @layer utilities هستند و هر قاعدهٔ layer‌دار، حتی با
+   specificity بالا، از آن‌ها ضعیف‌تر است. قاعدهٔ unlayered بر همهٔ layerها
+   غلبه می‌کند. به این ترتیب tracking-tight/wider که در Componentها
+   روی متن فارسی نشسته بی‌اثر می‌شود.
+
+   دلیل: در خط فارسی حروف به هم می‌چسبند؛ tracking-tight این اتصال را
+   می‌شکند و tracking-wider متن را تکه‌تکه می‌کند.
+   ───────────────────────────────────────────────────────────────────────── */
+[dir="rtl"] *,
+[dir="ltr"] * {
+  letter-spacing: normal;
 }

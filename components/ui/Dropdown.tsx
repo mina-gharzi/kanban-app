@@ -146,6 +146,8 @@ export default function Dropdown({ trigger, items, label, align = 'end' }: Props
           className={[
             'absolute z-40 mt-1 min-w-44 rounded-lg border border-border',
             'bg-surface p-1 shadow-md',
+            // ۱۸۰ms با همان easing سراسری — DESIGN_PLAN.md §۸ برای باز/بسته شدن
+            'animate-[menu-in_180ms_var(--ease-out-soft)]',
             align === 'end' ? 'end-0' : 'start-0',
           ].join(' ')}
         >
@@ -166,7 +168,7 @@ export default function Dropdown({ trigger, items, label, align = 'end' }: Props
               onFocus={() => setActiveIndex(index)}
               className={[
                 'flex w-full items-center gap-2.5 rounded-sm px-2.5 py-2',
-                'text-start text-[13px] transition-colors duration-100',
+                'text-start text-meta transition-colors duration-100',
                 'disabled:pointer-events-none disabled:opacity-50',
                 TONES[item.tone ?? 'default'],
               ].join(' ')}
@@ -179,6 +181,9 @@ export default function Dropdown({ trigger, items, label, align = 'end' }: Props
           ))}
         </div>
       )}
+
+      {/* ورود کوتاه و هم‌راستا با مودال؛ بدون stagger (DESIGN_PLAN.md §۸) */}
+      <style>{`@keyframes menu-in{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}`}</style>
     </div>
   )
 }

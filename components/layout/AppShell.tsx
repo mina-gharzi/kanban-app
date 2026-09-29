@@ -122,7 +122,7 @@ function SidebarHeader({
 }) {
   return (
     <div className="flex h-14 items-center justify-between border-b border-border px-4 lg:hidden">
-      <span className="text-[15px] font-semibold text-text">بوردها</span>
+      <span className="text-subtitle font-semibold text-text">بوردها</span>
       <IconButton
         ref={closeButtonRef}
         label="بستن فهرست"

@@ -2,7 +2,7 @@
 
 import type { Board } from '@/lib/board/types'
 import type { RealtimeStatus } from '@/hooks/useBoardRealtime'
-import { ColumnIcon } from '@/components/ui/icons'
+import { boardColor, boardInitial } from '@/lib/board/boardColor'
 
 type Props = {
   board: Board | undefined
@@ -12,64 +12,83 @@ type Props = {
 
 const STATUS_META: Record<
   RealtimeStatus,
-  { label: string; dot: string; text: string }
+  { label: string; dot: string; pill: string; ping: boolean }
 > = {
   connecting: {
     label: 'در حال اتصال',
     dot: 'bg-warning animate-pulse',
-    text: 'text-text-muted',
+    pill: 'border-warning/30 bg-warning/10 text-text-2',
+    ping: false,
   },
   live: {
     label: 'متصل',
     dot: 'bg-success',
-    text: 'text-text-muted',
+    pill: 'border-success/30 bg-success/10 text-text-2',
+    ping: true,
   },
   error: {
     label: 'ارتباط قطع شد',
     dot: 'bg-danger',
-    text: 'text-danger',
+    pill: 'border-danger/30 bg-danger-soft text-danger',
+    ping: false,
   },
 }
 
 /**
- * سربرگ بورد.
+ * سربرگ بورد: نام، تعداد کارت‌ها و وضعیت Realtime.
  *
- * سه چیز و بس: نام بورد (که قبلاً اصلاً نمایش داده نمی‌شد)، تعداد
- * کارت‌ها، و وضعیت Realtime به‌صورت نقطه‌ی رنگی با توضیح متنی.
- * وضعیت بصری تنها با رنگ منتقل نمی‌شود (screen-reader با `sr-only`
- * و `title` هم آن را می‌خواند)، چون برای کاربران کوررنگ قابل
- * تشخیص نیست.
+ * نشان رنگی کنار نام آیکن تزئینی نیست؛ همان هویت رنگیِ بورد در فهرست و
+ * نوار کناری است و کاربر را در سه صفحه به هم وصل می‌کند (§۹ برای آیکن‌های
+ * بی‌اطلاعات است، این یکی اطلاعات دارد).
+ *
+ * وضعیت بصری تنها با رنگ منتقل نمی‌شود: متن، `title` و `sr-only` هم دارد
+ * (کاربران کوررنگ). نام بورد بالاترین سطح عنوان است: نقش `title` (§۴.۲).
  */
-export default function BoardHeader({
-  board,
-  cardCount,
-  realtimeStatus,
-}: Props) {
+export default function BoardHeader({ board, cardCount, realtimeStatus }: Props) {
   const status = STATUS_META[realtimeStatus]
+  const color = board ? boardColor(board.id) : undefined
 
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-border px-4 py-3 sm:px-6">
-      <ColumnIcon size={18} className="shrink-0 text-text-muted" />
-
-      <h1 className="min-w-0 truncate text-[15px] font-semibold tracking-tight text-text">
-        {board?.title ?? 'بورد'}
-      </h1>
-
-      <span className="shrink-0 rounded-sm bg-surface-2 px-1.5 py-0.5 text-[11px] font-medium tabular text-text-2">
-        {cardCount.toLocaleString('fa-IR')} کارت
-      </span>
-
+    <div className="relative border-b border-border">
+      {/* نوار نازک رنگیِ بورد، بالای سربرگ */}
       <span
-        className={`ms-auto flex items-center gap-1.5 text-[12px] ${status.text}`}
-        title={status.label}
-      >
+        aria-hidden
+        className="absolute inset-x-0 top-0 h-0.5 bg-border"
+        style={color ? { backgroundColor: color } : undefined}
+      />
+
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3.5 sm:px-6">
         <span
-          aria-hidden="true"
-          className={`h-1.5 w-1.5 rounded-full ${status.dot}`}
-        />
-        <span className="sr-only">وضعیت ارتباط بلادرنگ: </span>
-        {status.label}
-      </span>
+          aria-hidden
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface-2 text-sm font-semibold text-text shadow-xs"
+          style={color ? { backgroundColor: color } : undefined}
+        >
+          {board ? boardInitial(board.title) : '…'}
+        </span>
+
+        <div className="min-w-0">
+          <h1 className="truncate text-title font-semibold leading-tight text-text">
+            {board?.title ?? 'بورد'}
+          </h1>
+          <p className="mt-0.5 text-chip tabular text-text-2">
+            {cardCount.toLocaleString('fa-IR')} کارت
+          </p>
+        </div>
+
+        <span
+          className={`ms-auto inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-meta transition-colors duration-300 ${status.pill}`}
+          title={status.label}
+        >
+          <span aria-hidden="true" className="relative flex h-2 w-2">
+            {status.ping && (
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-60" />
+            )}
+            <span className={`relative inline-flex h-2 w-2 rounded-full ${status.dot}`} />
+          </span>
+          <span className="sr-only">وضعیت ارتباط بلادرنگ: </span>
+          {status.label}
+        </span>
+      </div>
     </div>
   )
 }

@@ -16,6 +16,9 @@ type Props = {
  *
  * فرم بعد از موفقیت بسته می‌شود؛ محدودیت سقف ستون در لایه‌ی داده
  * (`createColumn`) اعمال می‌شود و این کامپوننت چیزی اختراع نمی‌کند.
+ *
+ * عرضش دقیقاً `w-72` است تا با شبکه‌ی ستون‌ها هم‌تراز باشد، و `self-start`
+ * دارد تا در ردیفی که ستون‌ها قد کامل می‌گیرند، خودش کشیده نشود.
  */
 export default function AddColumnForm({ onAdd }: Props) {
   const [isOpen, setIsOpen] = useState(false)
@@ -53,7 +56,7 @@ export default function AddColumnForm({ onAdd }: Props) {
       <button
         type="button"
         onClick={open}
-        className="flex w-64 shrink-0 items-center gap-1.5 rounded-xl border border-dashed border-border-2 px-3 py-2.5 text-[13px] text-text-2 transition-colors hover:border-border-2 hover:bg-surface-2 hover:text-text"
+        className="flex w-72 shrink-0 self-start items-center gap-1.5 rounded-lg border border-dashed border-border-2 px-3 py-2.5 text-meta text-text-2 transition-colors duration-150 ease-out-soft hover:border-primary hover:bg-surface-2 hover:text-text"
       >
         <PlusIcon size={15} />
         افزودن ستون
@@ -62,7 +65,7 @@ export default function AddColumnForm({ onAdd }: Props) {
   }
 
   return (
-    <div className="flex w-64 shrink-0 flex-col gap-1.5 rounded-xl border border-border bg-surface p-2 shadow-xs">
+    <div className="flex w-72 shrink-0 self-start flex-col gap-1.5 rounded-lg border border-border bg-surface p-2">
       <Input
         ref={inputRef}
         size="sm"
@@ -80,7 +83,7 @@ export default function AddColumnForm({ onAdd }: Props) {
         }}
       />
       {error && (
-        <p role="alert" className="text-[11px] text-danger">
+        <p role="alert" className="text-meta text-danger">
           {error}
         </p>
       )}

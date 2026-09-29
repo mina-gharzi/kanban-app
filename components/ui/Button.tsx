@@ -16,14 +16,16 @@ const VARIANTS: Record<ButtonVariant, string> = {
   secondary:
     'bg-surface text-text border border-border hover:bg-surface-2 hover:border-border-2 active:bg-surface-3',
   ghost: 'text-text-2 hover:bg-surface-2 hover:text-text active:bg-surface-3',
-  danger: 'bg-danger text-white hover:brightness-110 active:brightness-95 shadow-xs',
-  dangerGhost: 'text-danger hover:bg-danger-soft active:brightness-95',
+  danger:
+    'bg-danger text-on-danger hover:bg-danger-hover active:bg-danger-hover shadow-xs',
+  dangerGhost: 'text-danger hover:bg-danger-soft active:bg-danger-soft',
 }
 
 const SIZES: Record<ButtonSize, string> = {
-  // ارتفاع یکسان (۳۶px) برای همه‌ی اندازه‌ها تا هم‌ترازی در Rowها حفظ شود
-  sm: 'h-9 px-3 text-[13px] gap-1.5',
-  md: 'h-10 px-4 text-sm gap-2',
+  // ارتفاع یکسان برای همه‌ی اندازه‌ها تا هم‌ترازی در Rowها حفظ شود:
+  // sm = 36px, md = 40px — دقیقاً همان اعدادی که IconButton دارد.
+  sm: 'h-9 px-3 text-meta gap-1.5',
+  md: 'h-10 px-4 text-body gap-2',
 }
 
 /**

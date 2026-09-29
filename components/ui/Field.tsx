@@ -41,7 +41,7 @@ export default function Field({
     <div className={className}>
       <label
         htmlFor={id}
-        className="mb-1.5 block text-[13px] font-medium text-text-2"
+        className="mb-1.5 block text-meta font-medium text-text-2"
       >
         {label}
         {required && (
@@ -57,12 +57,12 @@ export default function Field({
         <p
           id={errorId}
           role="alert"
-          className="mt-1.5 flex items-center gap-1.5 text-xs text-danger"
+          className="mt-1.5 flex items-center gap-1.5 text-meta text-danger"
         >
           {error}
         </p>
       ) : hint ? (
-        <p id={hintId} className="mt-1.5 text-xs text-text-muted">
+        <p id={hintId} className="mt-1.5 text-meta text-text-muted">
           {hint}
         </p>
       ) : null}

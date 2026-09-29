@@ -1,21 +1,24 @@
 import type { Metadata, Viewport } from 'next'
 import Script from 'next/script'
-import { Vazirmatn } from 'next/font/google'
 import './globals.css'
 import ToastContainer from '@/components/ToastContainer'
 import { ThemeProvider } from '@/components/layout/ThemeProvider'
 import { Providers } from './providers'
 
 /**
- * فونت وزیرمتن: تنها فونت فارسی با کیفیت و variable که هم در Next
- * self-host می‌شود (بدون درخواست به Google در runtime) و هم
- * layout-shift ندارد.
+ * فونت پینار با `@font-face` در `globals.css` تعریف شده، نه با
+ * `next/font/local` — دلیلش در همان‌جا مستند شده. اینجا فقط دو وزنی که
+ * در هر صفحه دیده می‌شوند preload می‌شوند تا با `font-display: swap`
+ * متن یک‌بار با فونت جایگزین رندر نشود (layout shift).
+ *
+ * وزن ۵۰۰ فقط در چند چیپ کوچک و وزن ۸۰۰ اصلاً استفاده نمی‌شود، پس
+ * preload نمی‌شوند؛ در عوض در همان چیپ‌ها دیرتر می‌رسند و چون متن
+ * کوچک و متفاوت با ۴۰۰ است، پرش دیده نمی‌شود.
  */
-const vazirmatn = Vazirmatn({
-  subsets: ['arabic', 'latin'],
-  display: 'swap',
-  variable: '--font-vazirmatn',
-})
+const PinarPreloads = [
+  '/font/PINAR-DS3-REGULAR.TTF',
+  '/font/PINAR-BOLD.TTF',
+]
 
 export const metadata: Metadata = {
   title: {
@@ -65,10 +68,19 @@ export default function RootLayout({
     <html
       lang="fa"
       dir="rtl"
-      className={vazirmatn.variable}
       suppressHydrationWarning
     >
       <body className="min-h-dvh bg-bg text-text antialiased">
+        {PinarPreloads.map((href) => (
+          <link
+            key={href}
+            rel="preload"
+            href={href}
+            as="font"
+            type="font/ttf"
+            crossOrigin=""
+          />
+        ))}
         <Script id="theme" strategy="beforeInteractive">
           {themeScript}
         </Script>

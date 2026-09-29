@@ -36,15 +36,20 @@ export default function UserMenu() {
       trigger={(props) => (
         <button
           {...props}
+          // `label` روی خودِ منو می‌نشیند، نه روی محرک. بدون این
+          // aria-label دکمه هیچ نامی نداشت و screen reader آن را
+          // صرفاً «button» می‌خواند. (props) هیچ aria-label‌ای نمی‌آورد،
+          // پس این مقدار روی همان عنصر باقی می‌ماند.
+          aria-label="منوی کاربر"
           className="flex items-center gap-2 rounded-md py-1 pe-1.5 ps-0.5 transition-colors hover:bg-surface-2"
         >
           <span
             aria-hidden="true"
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary-soft text-[11px] font-semibold text-primary"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary-soft text-chip font-semibold text-primary tabular"
           >
             {initialsOf(email)}
           </span>
-          <span className="hidden max-w-40 truncate text-[13px] text-text-2 sm:inline">
+          <span className="hidden max-w-40 truncate text-meta text-text-2 sm:inline">
             {email}
           </span>
         </button>

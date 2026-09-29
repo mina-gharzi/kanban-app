@@ -173,8 +173,8 @@ export default function CardModal({ card, cardMutations, onClose }: Props) {
         footer={
           <>
             <Button
-              variant="ghost"
-              className="me-auto text-danger hover:bg-danger-soft"
+              variant="dangerGhost"
+              className="me-auto"
               onClick={() => setIsConfirmingDelete(true)}
               disabled={isPending}
             >
@@ -197,7 +197,7 @@ export default function CardModal({ card, cardMutations, onClose }: Props) {
           </>
         }
       >
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-6">
           {conflicts.length > 0 && (
             <div
               role="alert"
@@ -207,11 +207,11 @@ export default function CardModal({ card, cardMutations, onClose }: Props) {
                 <AlertTriangleIcon size={17} />
               </span>
               <div className="min-w-0 space-y-2.5">
-                <p className="text-[13px] leading-6 text-text">
+                <p className="text-body text-text">
                   این کارت در جای دیگری تغییر کرده است. اگر «ذخیره به هر حال» را
                   بزنید، نسخه‌ی جدیدتر بازنویسی می‌شود.
                 </p>
-                <p className="text-[12px] text-text-2">
+                <p className="text-meta text-text-2">
                   فیلدهای درگیر:{' '}
                   {conflicts.map((field) => CARD_FIELD_LABELS[field]).join('، ')}
                 </p>
@@ -230,7 +230,7 @@ export default function CardModal({ card, cardMutations, onClose }: Props) {
           {saveError && (
             <p
               role="alert"
-              className="rounded-lg border border-danger/40 bg-danger-soft px-3 py-2 text-[13px] text-danger"
+              className="rounded-lg border border-danger/40 bg-danger-soft px-3 py-2 text-meta text-danger"
             >
               {saveError}
             </p>
@@ -253,7 +253,7 @@ export default function CardModal({ card, cardMutations, onClose }: Props) {
           </Field>
 
           <fieldset>
-            <legend className="mb-2 text-[13px] font-medium text-text">
+            <legend className="mb-2 text-meta font-medium text-text-2">
               لیبل
             </legend>
             <div className="flex flex-wrap gap-2">
@@ -269,8 +269,10 @@ export default function CardModal({ card, cardMutations, onClose }: Props) {
                     disabled={isPending}
                     onClick={() => handleLabelClick(label.value)}
                     className={[
-                      'flex h-7 items-center gap-1.5 rounded-full border px-2.5',
-                      'text-[12px] transition-colors duration-150',
+                      // چیپ است، نه دکمهٔ گرد: `radius-full` فقط برای دایرهٔ
+                      // واقعی (DESIGN_PLAN.md §۷)
+                      'flex h-7 items-center gap-1.5 rounded-sm border px-2',
+                      'text-chip transition-colors duration-150 ease-out-soft',
                       'disabled:pointer-events-none disabled:opacity-55',
                       isActive
                         ? 'border-primary bg-primary-soft font-medium text-primary'

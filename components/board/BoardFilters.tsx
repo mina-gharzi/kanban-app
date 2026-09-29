@@ -3,6 +3,8 @@
 import { LABEL_COLORS } from '@/lib/labelColors'
 import type { BoardFiltersState } from '@/hooks/useBoardFilters'
 import Button from '@/components/ui/Button'
+import IconButton from '@/components/ui/IconButton'
+import Input from '@/components/ui/Input'
 import { SearchIcon, XIcon } from '@/components/ui/icons'
 
 type Props = Omit<BoardFiltersState, 'visibleCardIds'>
@@ -13,6 +15,14 @@ type Props = Omit<BoardFiltersState, 'visibleCardIds'>
  * جست‌وجو واقعاً فیلتر می‌کند، پس وضعیت «چیزی پیدا نشد» لازم است و
  * `hasActiveFilter` از hook می‌آید تا نمایش آن یک حقیقت واحد باشد
  * (نه محاسبه‌ی دوباره در UI که با hook واگرا می‌شد).
+ *
+ * ورودی جست‌وجو از همان `Input` مشترک فاز ۲ استفاده می‌کند: شعاع ۸px،
+ * ارتفاع ۳۶px، `text-meta`، و حلقهٔ فوکوس یکدست `:focus-visible` به‌جای
+ * `ring-primary/25` دستی که در تم تاریک عملاً نامرئی بود.
+ *
+ * دکمه‌های لیبل «کوچک»اند، پس شعاع `radius-md` و متن `text-meta` دارند
+ * (DESIGN_PLAN.md §۷). لیبل فعال دقیقاً همان الگوی `primary-soft` سایدبار
+ * و مودال کارت را دارد تا حالت فعال در کل اپ یکسان باشد.
  */
 export default function BoardFilters({
   searchQuery,
@@ -24,33 +34,28 @@ export default function BoardFilters({
   return (
     <div className="flex flex-wrap items-center gap-2">
       <div className="relative min-w-0 flex-1 sm:max-w-64">
-        <SearchIcon
-          size={16}
-          className="pointer-events-none absolute inset-y-0 start-2.5 my-auto text-text-muted"
-        />
-        <input
+        <Input
+          size="sm"
           type="search"
           value={searchQuery}
           onChange={(event) => onSearchChange(event.target.value)}
           placeholder="جست‌وجو در کارت‌ها"
           aria-label="جست‌وجو در کارت‌ها"
-          className={[
-            'h-9 w-full rounded-lg border border-border bg-surface ps-9 pe-8 text-[13px]',
-            'text-text placeholder:text-text-muted',
-            'transition-colors duration-150',
-            'hover:border-border-2 focus:border-primary focus:outline-none',
-            'focus:ring-2 focus:ring-primary/25',
-          ].join(' ')}
+          className="ps-9 pe-8 [&::-webkit-search-cancel-button]:hidden"
+        />
+        <SearchIcon
+          size={16}
+          className="pointer-events-none absolute inset-y-0 start-2.5 my-auto text-text-muted"
         />
         {searchQuery && (
-          <button
-            type="button"
+          <IconButton
+            label="پاک کردن جست‌وجو"
+            size="sm"
             onClick={() => onSearchChange('')}
-            aria-label="پاک کردن جست‌وجو"
-            className="absolute inset-y-0 end-2 my-auto flex h-5 w-5 items-center justify-center rounded text-text-muted transition-colors hover:bg-surface-2 hover:text-text"
+            className="absolute inset-y-0 end-1.5 my-auto h-7 w-7"
           >
             <XIcon size={14} />
-          </button>
+          </IconButton>
         )}
       </div>
 
@@ -66,8 +71,8 @@ export default function BoardFilters({
               }
               aria-pressed={isActive}
               className={[
-                'inline-flex h-9 items-center gap-1.5 rounded-lg border px-2.5 text-[12px]',
-                'transition-colors duration-150',
+                'inline-flex h-9 items-center gap-1.5 rounded-md border px-2.5 text-meta',
+                'transition-colors duration-150 ease-out-soft',
                 isActive
                   ? 'border-primary bg-primary-soft font-medium text-primary'
                   : 'border-border bg-surface text-text-2 hover:border-border-2 hover:bg-surface-2',

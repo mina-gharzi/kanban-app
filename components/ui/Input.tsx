@@ -28,14 +28,17 @@ export default function Input({
       className={[
         'w-full min-w-0 bg-surface text-text placeholder:text-text-muted',
         'border rounded-md transition-colors duration-150',
-        'focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary',
+        // عمداً `outline-none` نداریم: حلقهٔ فوکوس یکدست `:focus-visible`
+        // در globals.css است. حذفش با ring ۲۵٪-opacity که جایگزین می‌شد،
+        // فوکوس را در تم تاریک عملاً نامرئی می‌کرد.
+        'focus:border-primary',
         invalid
-          ? 'border-danger focus:border-danger focus:ring-danger/25'
+          ? 'border-danger focus:border-danger'
           : 'border-border hover:border-border-2',
-        size === 'sm' ? 'h-9 px-2.5 text-[13px]' : 'h-10 px-3 text-sm',
+        size === 'sm' ? 'h-9 px-2.5 text-meta' : 'h-10 px-3 text-body',
         leading ? 'pe-9' : '',
         trailing ? 'ps-9' : '',
-        'disabled:opacity-60',
+        'disabled:bg-surface-2 disabled:text-text-muted disabled:opacity-100',
         className,
       ]
         .filter(Boolean)

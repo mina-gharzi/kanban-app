@@ -51,9 +51,8 @@ export default function AppHeader({
           <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-on-primary">
             <BoardsIcon size={16} />
           </span>
-          <span className="text-[15px] font-semibold tracking-tight">
-            کانبان
-          </span>
+          {/* بدون `tracking-tight`: روی خط فارسی مجاز نیست (DESIGN_PLAN.md §۴.۳) */}
+          <span className="text-subtitle font-semibold">کانبان</span>
         </Link>
 
         {meta && (

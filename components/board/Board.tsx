@@ -68,7 +68,7 @@ export default function Board({ boardId }: Props) {
     <AppShell
       sidebar={BoardSidebar}
       headerMeta={
-        <span className="truncate text-[13px] text-text-2">{board?.title}</span>
+        <span className="truncate text-meta text-text-2">{board?.title}</span>
       }
     >
       <BoardHeader

@@ -27,9 +27,19 @@ const DUE_TONE = {
 /**
  * یک کارت.
  *
- * سلسله‌مراتب عمداً این است: لیبل، عنوان، پیش‌نمایش توضیح، و در
- * انتها metadata (تاریخ سررسید). هر بخش فقط وقتی رندر می‌شود که
- * واقعاً داده داشته باشد — کارت خالی از بخش‌های بی‌ربط نیست.
+ * سلسه‌مراتب عمداً این است: عنوان، پیش‌نمایش توضیح، و در انتها metadata
+ * (لیبل و تاریخ سررسید). هر بخش فقط وقتی رندر می‌شود که واقعاً داده داشته
+ * باشد — کارت خام از بخش‌های بی‌ربط نیست.
+ *
+ * سه پلهٔ متنی، سه توکن متفاوت (DESIGN_PLAN.md §۵.۲):
+ *
+ *   عنوان    subtitle 15/24 · text      ← چیست
+ *   توضیح    body     14/24 · text-2    ← جزئیات
+ *   متادیتا  meta     13/21 · text-2    ← چه زمانی / چه لیبلی
+ *
+ * لیبل فقط یک‌بار نمایش داده می‌شود (چیپ رنگی + نامش). نوار رنگی بالای کارت
+ * قبلاً همان رنگ را دوباره تکرار می‌کرد؛ حذف شد تا هر رنگ یک معنا داشته باشد
+ * و §۹ «رنگ برای تزئین» را نشکند.
  */
 export default function Card({ card, onOpen }: Props) {
   // کارتی که هنوز از سرور نیامده جابه‌جا یا ویرایش نمی‌شود؛ شناسه‌اش موقت است
@@ -102,61 +112,47 @@ export default function Card({ card, onOpen }: Props) {
       aria-busy={isPending}
       aria-label={isPending ? `${card.title} (در حال ذخیره)` : `کارت ${card.title}`}
       className={[
-        'group relative rounded-lg border border-border bg-surface p-3',
-        'transition-[border-color,box-shadow,background-color] duration-150',
-        'shadow-xs',
+        'group relative rounded-lg border bg-surface p-3 shadow-xs',
+        'transition-[border-color,box-shadow] duration-150 ease-out-soft',
         isPending
-          ? 'cursor-default opacity-60'
-          : 'cursor-grab hover:border-border-2 hover:shadow-sm active:cursor-grabbing',
+          ? 'cursor-default border-dashed opacity-60'
+          : 'cursor-grab border-border hover:border-border-2 hover:shadow-sm active:cursor-grabbing',
         // هنگام Drag خودِ کارتِ اصلی نیمه‌شفاف می‌شود و DragOverlay جای آن را می‌گیرد
         isDragging ? 'opacity-40' : 'opacity-100',
       ].join(' ')}
     >
-      {/* لیبل: نوار رنگی بالای کارت، فقط وقتی واقعاً وجود دارد */}
-      {card.label_color && (
-        <span
-          aria-hidden="true"
-          className="absolute inset-x-3 top-0 h-0.5 rounded-full"
-          style={{ backgroundColor: card.label_color }}
-        />
+      <p className="line-clamp-2 text-subtitle font-medium text-text">
+        {card.title}
+      </p>
+
+      {hasDescription && (
+        <p className="mt-1 line-clamp-2 text-body text-text-2">{card.description}</p>
       )}
 
-      <div className={card.label_color ? 'pt-1' : ''}>
-        <p className="line-clamp-2 text-[13px] font-medium leading-relaxed text-text">
-          {card.title}
-        </p>
-
-        {hasDescription && (
-          <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-text-2">
-            {card.description}
-          </p>
-        )}
-
-        {(card.due_date || card.label_color) && (
-          <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-            {card.label_color && (
-              <span className="inline-flex items-center gap-1.5 rounded-sm border border-border px-1.5 py-0.5 text-[11px] text-text-2">
-                <span
-                  aria-hidden="true"
-                  className="h-2 w-2 rounded-full"
-                  style={{ backgroundColor: card.label_color }}
-                />
-                {labelNameOf(card.label_color)}
-              </span>
-            )}
-
-            {card.due_date && dueDateStatus && (
+      {(card.due_date || card.label_color) && (
+        <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+          {card.label_color && (
+            <span className="inline-flex items-center gap-1.5 rounded-sm border border-border bg-surface-2 px-2 py-1 text-meta text-text-2">
               <span
-                className={`inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-[11px] tabular ${DUE_TONE[dueDateStatus]}`}
-                title={formatDueDate(card.due_date)}
-              >
-                <CalendarIcon size={12} />
-                {formatDueDate(card.due_date)}
-              </span>
-            )}
-          </div>
-        )}
-      </div>
+                aria-hidden="true"
+                className="h-2 w-2 rounded-full"
+                style={{ backgroundColor: card.label_color }}
+              />
+              {labelNameOf(card.label_color)}
+            </span>
+          )}
+
+          {card.due_date && dueDateStatus && (
+            <span
+              className={`inline-flex items-center gap-1 rounded-sm px-2 py-1 text-meta tabular ${DUE_TONE[dueDateStatus]}`}
+              title={formatDueDate(card.due_date)}
+            >
+              <CalendarIcon size={12} />
+              {formatDueDate(card.due_date)}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   )
 }

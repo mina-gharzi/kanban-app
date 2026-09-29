@@ -51,9 +51,7 @@ export default function ConfirmDialog({
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-danger-soft text-danger">
           <AlertTriangleIcon size={19} />
         </span>
-        <p className="pt-1.5 text-[13px] leading-relaxed text-text-2">
-          {description}
-        </p>
+        <p className="pt-1.5 text-body text-text-2">{description}</p>
       </div>
     </Modal>
   )

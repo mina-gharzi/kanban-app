@@ -32,9 +32,9 @@ export default function EmptyState({
         {icon}
       </span>
       <div className="space-y-1">
-        <p className="text-sm font-medium text-text">{title}</p>
+        <p className="text-body font-medium text-text">{title}</p>
         {description && (
-          <p className="mx-auto max-w-xs text-[13px] leading-relaxed text-text-2">
+          <p className="mx-auto max-w-xs text-meta text-text-2">
             {description}
           </p>
         )}

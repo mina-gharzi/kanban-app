@@ -19,12 +19,14 @@ export default function Textarea({
       rows={rows}
       aria-invalid={invalid || undefined}
       className={[
-        'w-full resize-none rounded-md border bg-surface px-3 py-2 text-sm',
+        'w-full resize-none rounded-md border bg-surface px-3 py-2 text-body',
         'text-text placeholder:text-text-muted transition-colors duration-150',
-        'focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary',
+        // مثل Input: حلقهٔ فوکوس از `:focus-visible` سراسری می‌آید.
+        'focus:border-primary',
         invalid
-          ? 'border-danger focus:border-danger focus:ring-danger/25'
+          ? 'border-danger focus:border-danger'
           : 'border-border hover:border-border-2',
+        'disabled:bg-surface-2 disabled:text-text-muted disabled:opacity-100',
         className,
       ]
         .filter(Boolean)

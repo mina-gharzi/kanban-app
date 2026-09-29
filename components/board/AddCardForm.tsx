@@ -15,8 +15,12 @@ type Props = {
  * فرم «افزودن کارت».
  *
  * دو حالت دارد: یک دکمه‌ی آرام که به Input تبدیل می‌شود، و فرم باز.
- * موفقیت فرم را می‌بندد تا افزودن پشت‌سرهم بدون کلیک اضافه ممکن باشد؛
- * خطا فرم را باز نگه می‌دارد و کنار فیلد نشان می‌دهد.
+ * موفقیت فرم را باز نگه می‌دارد تا افزودن پشت‌سرهم بدون کلیک اضافه ممکن
+ * باشد؛ خطا فرم را باز نگه می‌دارد و کنار فیلد نشان می‌دهد.
+ *
+ * پوسته‌ی فرم یک «پنل» است، نه کارت: `shadow-xs` در این Design System
+ * فقط برای کارت‌هاست (DESIGN_PLAN.md §۵.۳) که تنها روی چیز دیگری
+ * قرار دارند. رنگ و شعاع از خودِ `Input` و `Button` می‌آید.
  */
 export default function AddCardForm({ onAdd }: Props) {
   const [isOpen, setIsOpen] = useState(false)
@@ -53,7 +57,7 @@ export default function AddCardForm({ onAdd }: Props) {
       <button
         type="button"
         onClick={open}
-        className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-[13px] text-text-muted transition-colors hover:bg-surface-2 hover:text-text"
+        className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-meta text-text-2 transition-colors duration-150 ease-out-soft hover:bg-surface-2 hover:text-text"
       >
         <PlusIcon size={15} />
         افزودن کارت
@@ -62,7 +66,7 @@ export default function AddCardForm({ onAdd }: Props) {
   }
 
   return (
-    <div className="flex flex-col gap-1.5 rounded-lg border border-border bg-surface p-2 shadow-xs">
+    <div className="flex flex-col gap-1.5 rounded-lg border border-border bg-surface p-2">
       <Input
         ref={inputRef}
         size="sm"
@@ -80,7 +84,7 @@ export default function AddCardForm({ onAdd }: Props) {
         }}
       />
       {error && (
-        <p role="alert" className="text-[11px] text-danger">
+        <p role="alert" className="text-meta text-danger">
           {error}
         </p>
       )}

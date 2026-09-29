@@ -18,7 +18,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The UI font is **Pinar**, self-hosted from `public/font/` (`400 / 500 / 700 / 800`) and declared with `@font-face` in `app/globals.css`, then applied project-wide through the `--font-sans` token. It is not loaded with `next/font/local`: in this Next version the Turbopack local-font loader fails to resolve its own internal CSS module, which breaks the build.
 
 ## Learn More
 

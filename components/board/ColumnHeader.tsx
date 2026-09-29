@@ -23,7 +23,10 @@ type Props = {
  *
  * کنش‌های ثانویه (تغییر نام / حذف) داخل منوی `⋯` می‌روند تا سربرگ
  * شلوغ نشود؛ Delete تنها آیتم خطرناک است و رنگ danger دارد. تعداد کارت
- * به‌صورت Badge کنار عنوان است، نه داخل پرانتز.
+ * به‌صورت چیپ کنار عنوان است، نه داخل پرانتز.
+ *
+ * نام ستون نقش `heading` دارد (DESIGN_PLAN.md §۴.۲) و شمارنده نقش `chip`؛
+ * دستگیرهٔ کشیدن اولین عنصر ردیف است تا در RTL کنار لبهٔ نزدیک باشد (§۵.۴).
  */
 export default function ColumnHeader({
   column,
@@ -89,7 +92,7 @@ export default function ColumnHeader({
           {...dragHandleProps}
           title="جابه‌جایی ستون"
           aria-label={`جابه‌جایی ستون ${column.title}`}
-          className="cursor-grab touch-none rounded-sm p-0.5 text-text-muted transition-colors hover:bg-surface-2 hover:text-text-2 active:cursor-grabbing"
+          className="cursor-grab touch-none rounded-sm p-1 text-text-muted transition-colors duration-150 ease-out-soft hover:bg-surface-2 hover:text-text-2 active:cursor-grabbing"
         >
           <GripIcon size={15} />
         </button>
@@ -114,14 +117,14 @@ export default function ColumnHeader({
             aria-label="عنوان ستون"
           />
           {error && (
-            <p role="alert" className="mt-1 text-[11px] text-danger">
+            <p role="alert" className="mt-1 text-meta text-danger">
               {error}
             </p>
           )}
         </div>
       ) : (
         <h3
-          className="min-w-0 flex-1 truncate text-[13px] font-semibold text-text"
+          className="min-w-0 flex-1 truncate text-heading font-semibold text-text"
           title={column.title}
         >
           {column.title}
@@ -129,7 +132,7 @@ export default function ColumnHeader({
       )}
 
       <span
-        className="shrink-0 rounded-sm bg-surface-2 px-1.5 py-0.5 text-[11px] font-medium tabular text-text-2"
+        className="shrink-0 rounded-sm bg-surface-2 px-2 py-1 text-chip font-medium tabular text-text-2"
         aria-label={`${cardCount} کارت`}
       >
         {cardCount}
