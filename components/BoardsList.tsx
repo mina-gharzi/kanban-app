@@ -13,14 +13,9 @@ import Field from "@/components/ui/Field";
 import Input from "@/components/ui/Input";
 import Skeleton from "@/components/ui/Skeleton";
 import { ColumnIcon, PlusIcon, TrashIcon } from "@/components/ui/icons";
-import { LABEL_COLORS } from "@/lib/labelColors";
+import { boardColor, boardInitial, hashOf } from "@/lib/board/boardColor";
 
 /** هش ساده و پایدار از id تا هر بورد هویت بصری ثابت خودش را داشته باشد */
-function hashOf(id: string): number {
-  let h = 0;
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
-  return h;
-}
 
 /** پیش‌نمایش کوچک ستون‌ها؛ فقط تزئینی و بر پایه‌ی هش */
 function MiniColumns({ seed, color }: { seed: number; color: string }) {
@@ -200,7 +195,7 @@ export default function BoardsList() {
               <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {boards.map((board) => {
                   const seed = hashOf(board.id);
-                  const color = LABEL_COLORS[seed % LABEL_COLORS.length].value;
+                  const color = boardColor(board.id);
                   return (
                     <li key={board.id}>
                       <div className="group relative flex h-40 flex-col justify-between overflow-hidden rounded-2xl border border-border bg-surface p-4 shadow-xs transition-all duration-200 hover:-translate-y-1 hover:border-border-2 hover:shadow-md">
@@ -219,7 +214,7 @@ export default function BoardsList() {
                             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-semibold text-text"
                             style={{ backgroundColor: color }}
                           >
-                            {Array.from(board.title.trim())[0] ?? "؟"}
+                            {boardInitial(board.title)}
                           </span>
                           <span className="min-w-0">
                             <h2 className="truncate text-sm font-semibold text-text group-hover:text-primary">

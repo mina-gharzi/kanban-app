@@ -61,13 +61,13 @@ export default function BoardFilters({
 
       <div className="flex flex-wrap items-center gap-1" role="group" aria-label="فیلتر لیبل">
         {LABEL_COLORS.map((label) => {
-          const isActive = activeLabelFilter === label.value
+          const isActive = activeLabelFilter === label.key
           return (
             <button
-              key={label.value}
+              key={label.key}
               type="button"
               onClick={() =>
-                onLabelFilterChange(isActive ? null : label.value)
+                onLabelFilterChange(isActive ? null : label.key)
               }
               aria-pressed={isActive}
               className={[

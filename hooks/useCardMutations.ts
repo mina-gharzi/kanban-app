@@ -152,16 +152,18 @@ export function useCardMutations(boardId: string) {
   const updateCardMutation = useMutation<
     void,
     unknown,
-    { cardId: string; patch: CardFieldPatch },
+    { cardId: string; patch: CardFieldPatch; expected?: CardFieldPatch },
     UpdateCardContext
   >({
     mutationFn: ({
       cardId,
       patch,
+      expected,
     }: {
       cardId: string
       patch: CardFieldPatch
-    }) => updateCard(cardId, patch),
+      expected?: CardFieldPatch
+    }) => updateCard(cardId, patch, expected),
     mutationKey: cardMutationKey,
     onMutate: async ({ cardId, patch }) => {
       await queryClient.cancelQueries({ queryKey: boardKey })

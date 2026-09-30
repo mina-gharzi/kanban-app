@@ -14,6 +14,8 @@ export type Column = {
 export type Card = {
   id: string
   column_id: string
+  /** denormalized؛ توسط trigger دیتابیس پر می‌شود. کارت‌های optimistic هنوز ندارند. */
+  board_id?: string
   title: string
   description: string | null
   position: number

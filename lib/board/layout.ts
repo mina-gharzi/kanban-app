@@ -1,11 +1,37 @@
 import type { Card, CardPositionUpdate, Column, ColumnPositionUpdate } from './types'
 import { isTemporaryId } from './optimistic'
 
-/** کپی مرتب‌شده بر اساس position (آرایه اصلی دست‌نخورده می‌ماند). */
-export function sortByPosition<T extends { position: number }>(
+/**
+ * کپی مرتب‌شده بر اساس position؛ در برابری، id ملاک است تا همه‌ی کلاینت‌ها
+ * (و هر صفحه‌ی query) دقیقاً یک ترتیب را ببینند.
+ */
+export function sortByPosition<T extends { position: number; id: string }>(
   items: readonly T[],
 ): T[] {
-  return [...items].sort((a, b) => a.position - b.position)
+  return [...items].sort(
+    (a, b) => a.position - b.position || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
+  )
+}
+
+/**
+ * کمترین فاصله‌ی مجاز بین دو position همسایه. کمتر از این، میانگین‌گیری از
+ * دقت double فاصله می‌گیرد و باید ستون یک‌بار از نو شماره‌گذاری شود.
+ */
+export const MIN_POSITION_GAP = 1e-6
+
+/**
+ * position تازه بین دو همسایه (fractional indexing).
+ * `null` یعنی جا تمام شده (یا position تکراری هست) و باید rebalance شود.
+ */
+export function positionBetween(
+  prev: number | undefined,
+  next: number | undefined,
+): number | null {
+  if (prev === undefined && next === undefined) return 0
+  if (prev === undefined) return (next as number) - 1
+  if (next === undefined) return prev + 1
+  if (next - prev < MIN_POSITION_GAP) return null
+  return (prev + next) / 2
 }
 
 /** کارت‌ها را بر اساس ستون گروه‌بندی می‌کند؛ هر گروه بر اساس position مرتب است. */
@@ -28,8 +54,12 @@ export function groupCardsByColumn(
 }
 
 /**
- * جابه‌جایی ستون‌ها: موقعیت جدید هر ستون را حساب می‌کند.
- * اگر جابه‌جایی معتبر نباشد (مثلاً رها کردن روی خودش) مقدار null برمی‌گرداند.
+ * جابه‌جایی ستون‌ها.
+ *
+ * حالت عادی: فقط **یک** update برای ستونِ جابه‌جاشده (position بین دو
+ * همسایه‌ی جدید). دو تب هم‌زمان دیگر روی position کل ستون‌ها با هم رقابت
+ * نمی‌کنند. فقط وقتی جا تمام شده باشد، کل ستون‌ها از نو ۰..n-۱ می‌شوند.
+ * اگر جابه‌جایی معتبر نباشد (رها کردن روی خودش) null برمی‌گردد.
  */
 export function planColumnMove(
   columns: readonly Column[],
@@ -48,21 +78,26 @@ export function planColumnMove(
   if (!moved) return null
   reordered.splice(overIndex, 0, moved)
 
-  return reordered.map((column, index) => ({ id: column.id, position: index }))
+  const position = positionBetween(
+    reordered[overIndex - 1]?.position,
+    reordered[overIndex + 1]?.position,
+  )
+  if (position === null) {
+    return reordered.map((column, index) => ({ id: column.id, position: index }))
+  }
+  return [{ id: moved.id, position }]
 }
 
 /**
- * جابه‌جایی کارت: موقعیت نهایی ستون مقصد **و** شماره‌گذاری دوباره‌ی
- * باقی‌مانده‌ی کارت‌های ستون مبدأ را حساب می‌کند.
+ * جابه‌جایی کارت.
  *
- * چرا ستون مبدأ هم لازم است؟ اگر جای خالی (hole) در position بماند، شمارش
- * ساده‌ی «تعداد کارت‌ها» برای کارت بعدی به position تکراری می‌رسد و ترتیب
- * بین کلاینت‌های مختلف ناپایدار می‌شود. با بازچینش ۰..n-۱ در هر دو ستون،
- * این تناقض از بین می‌رود و rollback هم دقیقاً قابل بازگرداندن می‌شود.
+ * حالت عادی: فقط **یک** update (ستون مقصد + position بین دو همسایه).
+ * ستون مبدأ سوراخ می‌گیرد که با position کسری مشکلی نیست. فقط وقتی جا
+ * تمام شده یا position تکراری هست، ستون مقصد از نو ۰..n-۱ می‌شود.
  *
- * `targetId` می‌تواند آیدی یک کارت یا آیدی ستون باشد (رها کردن روی ستون خالی).
- * ستون‌ها لازم‌اند تا آیدی ناشناخته رد شود؛ وگرنه کارت به ستونی می‌رفت که
- * وجود ندارد و آن جابه‌جایی هرگز نمایش داده نمی‌شد.
+ * رها کردن روی کارت: در ستون دیگر «قبل از» آن کارت؛ در همان ستون رو به
+ * پایین «بعد از» آن (مثل arrayMove در dnd-kit و پیش‌نمایشی که کاربر
+ * می‌بیند). `targetId` می‌تواند آیدی کارت یا ستون (ستون خالی) باشد.
  */
 export function planCardMove(
   cards: readonly Card[],
@@ -76,52 +111,54 @@ export function planCardMove(
   const overCard = cards.find((c) => c.id === targetId)
   const targetColumnId = overCard ? overCard.column_id : targetId
   const targetColumn = columns.find((column) => column.id === targetColumnId)
-  // ستون ناشناخته یعنی هیچ ستونی با این شناسه نیست (تایپِ `over` می‌تواند
-  // هر رشته‌ای باشد) و ستون موقت یعنی هنوز در سرور ثبت نشده: در هر دو حالت
-  // نوشتنِ position بعداً شکست می‌خورد، پس اصلاً mutation ساخته نمی‌شود.
+  // ستون ناشناخته یا موقت (هنوز در سرور نیست): mutation ساخته نمی‌شود
   if (!targetColumn || isTemporaryId(targetColumn.id)) return null
 
-  // کارت سر جای خودش رها شده است
-  if (targetColumnId === activeCard.column_id && overCard?.id === activeCardId) {
-    return null
-  }
+  if (overCard?.id === activeCardId) return null
 
-  const targetColumnCards = sortByPosition(
+  const sameColumn = targetColumnId === activeCard.column_id
+  const target = sortByPosition(
     cards.filter((c) => c.column_id === targetColumnId && c.id !== activeCardId),
   )
 
-  let insertIndex = targetColumnCards.length
+  let insertIndex = target.length
   if (overCard) {
-    const overIndex = targetColumnCards.findIndex((c) => c.id === overCard.id)
-    if (overIndex !== -1) insertIndex = overIndex
+    const overIndex = target.findIndex((c) => c.id === overCard.id)
+    if (overIndex !== -1) {
+      insertIndex = overIndex
+      if (sameColumn) {
+        const original = sortByPosition(
+          cards.filter((c) => c.column_id === targetColumnId),
+        )
+        const from = original.findIndex((c) => c.id === activeCardId)
+        const to = original.findIndex((c) => c.id === overCard.id)
+        if (from < to) insertIndex = overIndex + 1
+      }
+    }
   }
 
-  const reordered = [...targetColumnCards]
-  reordered.splice(insertIndex, 0, { ...activeCard, column_id: targetColumnId })
+  if (sameColumn) {
+    const original = sortByPosition(
+      cards.filter((c) => c.column_id === targetColumnId),
+    )
+    if (original.findIndex((c) => c.id === activeCardId) === insertIndex) return null
+  }
 
-  const updates: CardPositionUpdate[] = reordered.map((card, index) => ({
+  const position = positionBetween(
+    target[insertIndex - 1]?.position,
+    target[insertIndex]?.position,
+  )
+  if (position !== null) {
+    return [{ id: activeCard.id, column_id: targetColumnId, position }]
+  }
+
+  const reordered = [...target]
+  reordered.splice(insertIndex, 0, activeCard)
+  return reordered.map((card, index) => ({
     id: card.id,
     column_id: targetColumnId,
     position: index,
   }))
-
-  // جابه‌جایی بین دو ستون: باقی‌مانده‌ی ستون مبدأ دوباره ۰..n-۱ می‌شود.
-  // کارتِ در حال جابه‌جایی نباید اینجا بیاید، وگرنه دو update برای یک کارت
-  // تولید می‌شد و هر کدام که آخر نوشته شود برنده می‌شد.
-  if (targetColumnId !== activeCard.column_id) {
-    const sourceColumnCards = sortByPosition(
-      cards.filter((c) => c.column_id === activeCard.column_id && c.id !== activeCardId),
-    )
-    for (const [index, card] of sourceColumnCards.entries()) {
-      updates.push({
-        id: card.id,
-        column_id: activeCard.column_id,
-        position: index,
-      })
-    }
-  }
-
-  return updates
 }
 
 export function applyColumnPositions(

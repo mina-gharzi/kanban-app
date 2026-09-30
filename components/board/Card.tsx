@@ -5,7 +5,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { isTemporaryId } from '@/lib/board/optimistic'
 import type { Card as CardType } from '@/lib/board/types'
 import { getDueDateStatus, formatDueDate } from '@/lib/dueDate'
-import { LABEL_COLORS } from '@/lib/labelColors'
+import { labelOf } from '@/lib/labelColors'
 import { CalendarIcon } from '@/components/ui/icons'
 
 type Props = {
@@ -15,7 +15,7 @@ type Props = {
 
 /** نام لیبل از روی مقدار ذخیره‌شده در دیتابیس؛ برای برچسب قابل‌خواندن. */
 function labelNameOf(value: string): string {
-  return LABEL_COLORS.find((label) => label.value === value)?.name ?? 'لیبل'
+  return labelOf(value)?.name ?? 'لیبل'
 }
 
 const DUE_TONE = {
@@ -136,7 +136,7 @@ export default function Card({ card, onOpen }: Props) {
               <span
                 aria-hidden="true"
                 className="h-2 w-2 rounded-full"
-                style={{ backgroundColor: card.label_color }}
+                style={{ backgroundColor: labelOf(card.label_color)?.value }}
               />
               {labelNameOf(card.label_color)}
             </span>

@@ -9,7 +9,7 @@ import {
   writeFilterParams,
   type BoardFilter,
 } from '@/lib/board/filters'
-import { isKnownLabelColor } from '@/lib/labelColors'
+import { resolveLabelKey } from '@/lib/labelColors'
 import type { Card } from '@/lib/board/types'
 
 export type BoardFiltersState = {
@@ -52,7 +52,7 @@ export function useBoardFilters(cards: readonly Card[]): BoardFiltersState {
       searchQuery: parsed.searchQuery,
       // لینک دست‌کاری‌شده نباید به فیلتری برسد که هیچ دکمه‌ای در آن
       // `aria-pressed` ندارد و نتیجه‌اش همیشه خالی است.
-      labelColor: label !== null && isKnownLabelColor(label) ? label : null,
+      labelColor: resolveLabelKey(label),
     }
   }, [searchParams])
 

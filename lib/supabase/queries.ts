@@ -53,27 +53,52 @@ export function assertRowsAffected(
   })
 }
 
+/** اندازه‌ی هر صفحه؛ برابر سقف پیش‌فرض `max-rows` در Supabase. */
+const PAGE_SIZE = 1000
+
+/**
+ * ستون‌ها و کارت‌های یک بورد، موازی و بدون `.in('column_id', [...])`.
+ *
+ * چرا نه `.in()`: با ستون‌های زیاد، URL از سقف طول رد می‌شود.
+ * چرا نه embed (`columns(*, cards(*))`): embed را نمی‌شود صفحه‌بندی کرد و
+ * PostgREST بی‌صدا در `max-rows` قطعش می‌کند، یعنی کارت‌های بورد بزرگ گم
+ * می‌شدند. اینجا کارت‌ها با join داخلی روی `columns.board_id` فیلتر و
+ * با `range` صفحه‌بندی می‌شوند؛ برای بورد معمولی همان دو درخواست موازی است.
+ * ترتیب `position, id` یک ترتیب کاملاً قطعی می‌دهد تا صفحه‌ها همپوشانی
+ * یا شکاف نداشته باشند.
+ */
 export async function getBoardData(boardId: string): Promise<BoardData> {
-  const { data: columns, error: colError } = await supabase
+  const columnsRequest = supabase
     .from('columns')
     .select('*')
     .eq('board_id', boardId)
     .order('position')
+    .order('id')
 
-  if (colError) throw normalizeError(colError)
-  if (!columns || columns.length === 0) return { columns: [], cards: [] }
+  const cardsRequest = (async (): Promise<Card[]> => {
+    const all: Card[] = []
+    for (let from = 0; ; from += PAGE_SIZE) {
+      const { data, error } = await supabase
+        .from('cards')
+        .select('*, columns!inner(board_id)')
+        .eq('columns.board_id', boardId)
+        .order('position')
+        .order('id')
+        .range(from, from + PAGE_SIZE - 1)
+      if (error) throw normalizeError(error)
+      const page = (data ?? []) as Array<Card & { columns?: unknown }>
+      for (const row of page) {
+        const { columns: _joined, ...card } = row
+        all.push(card as Card)
+      }
+      if (page.length < PAGE_SIZE) return all
+    }
+  })()
 
-  const columnIds = columns.map((c) => c.id)
+  const [columnsResult, cards] = await Promise.all([columnsRequest, cardsRequest])
+  if (columnsResult.error) throw normalizeError(columnsResult.error)
 
-  const { data: cards, error: cardError } = await supabase
-    .from('cards')
-    .select('*')
-    .in('column_id', columnIds)
-    .order('position')
-
-  if (cardError) throw normalizeError(cardError)
-
-  return { columns: columns as Column[], cards: (cards ?? []) as Card[] }
+  return { columns: (columnsResult.data ?? []) as Column[], cards }
 }
 
 export async function getBoards(): Promise<Board[]> {
@@ -141,14 +166,49 @@ export async function deleteCard(cardId: string) {
   assertRowsAffected(data, 'deleteCard')
 }
 
-/** ویرایش فیلدهای کارت (عنوان، توضیحات، لیبل، تاریخ سررسید) در یک درخواست. */
-export async function updateCard(cardId: string, patch: CardFieldPatch) {
-  const { data, error } = await supabase
-    .from('cards')
-    .update(patch)
-    .eq('id', cardId)
-    .select('id')
+/**
+ * ویرایش فیلدهای کارت در یک درخواست، با قفل خوش‌بینانه‌ی سطح فیلد.
+ *
+ * `expected` مقدار خام فیلدهایی است که کاربر در patch دارد و آخرین‌بار
+ * دیده است. UPDATE فقط وقتی اعمال می‌شود که همان فیلدها هنوز همان مقدار
+ * را داشته باشند (`WHERE title = … AND description IS NULL …`)، پس «بررسی
+ * و بعد نوشتن» یک عملیات اتمیک است و پنجره‌ی race ندارد. چون فقط فیلدهای
+ * در حال ویرایش قید می‌شوند، تغییر هم‌زمانِ فیلد دیگر (مثلاً جابه‌جایی کارت
+ * یا ویرایش توضیحات در حالی که عنوان را عوض می‌کنید) تعارض کاذب نمی‌سازد،
+ * و به ستون `updated_at` یا `version` هم نیازی نیست.
+ *
+ * ۰ سطر با `expected` یعنی: یا فیلد عوض شده (CONFLICT)، یا کارت نیست /
+ * RLS پنهانش کرده (NOT_FOUND). این دو با یک SELECT فقط در مسیر شکست
+ * تفکیک می‌شوند.
+ */
+export async function updateCard(
+  cardId: string,
+  patch: CardFieldPatch,
+  expected?: CardFieldPatch
+) {
+  let query = supabase.from('cards').update(patch).eq('id', cardId)
+  for (const [field, value] of Object.entries(expected ?? {})) {
+    query = value === null ? query.is(field, null) : query.eq(field, value)
+  }
+  const { data, error } = await query.select('id')
   if (error) throw normalizeError(error)
+
+  if (expected && (!data || data.length === 0)) {
+    const { data: existing, error: probeError } = await supabase
+      .from('cards')
+      .select('id')
+      .eq('id', cardId)
+      .maybeSingle()
+    if (probeError) throw normalizeError(probeError)
+    if (existing) {
+      throw new AppError({
+        code: ERROR_CODES.CONFLICT,
+        message: 'updateCard: a field changed since it was read',
+        userMessage: 'این کارت همین حالا در جای دیگری تغییر کرد.',
+        retryable: false,
+      })
+    }
+  }
   assertRowsAffected(data, 'updateCard')
 }
 

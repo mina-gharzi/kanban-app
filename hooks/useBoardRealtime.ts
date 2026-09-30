@@ -2,7 +2,11 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import type { RealtimeChannel, REALTIME_SUBSCRIBE_STATES } from '@supabase/supabase-js'
+import type {
+  RealtimeChannel,
+  RealtimePostgresChangesPayload,
+  REALTIME_SUBSCRIBE_STATES,
+} from '@supabase/supabase-js'
 import { AppError } from '@/lib/errors/AppError'
 import { ERROR_CODES } from '@/lib/errors/errorCodes'
 import { logError } from '@/lib/errors/logError'
@@ -151,123 +155,119 @@ export function useBoardRealtime(boardId: string): RealtimeStatus {
       if (changed) setStatus(next)
     }
 
+    const onCardChange = (payload: RealtimePostgresChangesPayload<Card>): void => {
+        if (payload.eventType === 'INSERT') {
+          const newCard = payload.new
+          // قاعده ۲: create در جریان، خودش رکورد را جایگزین می‌کند
+          if (writeInFlight([pendingCreateKey('card', newCard.column_id)])) return
+          setBoardData((previous) => {
+            const belongsToBoard = previous.columns.some(
+              (column) => column.id === newCard.column_id
+            )
+            const alreadyKnown = previous.cards.some(
+              (card) => card.id === newCard.id
+            )
+            if (!belongsToBoard || alreadyKnown) return previous
+            return { ...previous, cards: [...previous.cards, newCard] }
+          })
+        }
+
+        if (payload.eventType === 'UPDATE') {
+          const updatedCard = payload.new
+          // قاعده ۱: نوشتن خوش‌بینانه در جریان، مالک این رکورد است
+          if (writeInFlight([updatedCard.id])) return
+          setBoardData((previous) => {
+            const belongsToBoard = previous.columns.some(
+              (column) => column.id === updatedCard.column_id
+            )
+            if (!belongsToBoard) return previous
+            return {
+              ...previous,
+              cards: previous.cards.map((card) =>
+                card.id === updatedCard.id ? updatedCard : card
+              ),
+            }
+          })
+        }
+
+        if (payload.eventType === 'DELETE') {
+          const deletedId = payload.old.id
+          if (!deletedId) return
+          if (writeInFlight([deletedId])) return
+          setBoardData((previous) => ({
+            ...previous,
+            cards: previous.cards.filter((card) => card.id !== deletedId),
+          }))
+        }
+    }
+
+    const onColumnChange = (payload: RealtimePostgresChangesPayload<Column>): void => {
+        if (payload.eventType === 'INSERT') {
+          const newColumn = payload.new
+          if (newColumn.board_id !== boardId) return
+          // قاعده ۲: create ستون در جریان، خودش رکورد را جایگزین می‌کند.
+          // کلید روی بورد است چون INSERT شناسه‌ی واقعی ستون را دارد، نه
+          // شناسه‌ی موقتی که ما ساخته‌ایم.
+          if (writeInFlight([pendingCreateKey('column', boardId)])) return
+          setBoardData((previous) => {
+            const alreadyKnown = previous.columns.some(
+              (column) => column.id === newColumn.id
+            )
+            if (alreadyKnown) return previous
+            return { ...previous, columns: [...previous.columns, newColumn] }
+          })
+        }
+
+        if (payload.eventType === 'UPDATE') {
+          const updatedColumn = payload.new
+          if (updatedColumn.board_id !== boardId) return
+          if (writeInFlight([updatedColumn.id])) return
+          setBoardData((previous) => {
+            const isOurs = previous.columns.some(
+              (column) => column.id === updatedColumn.id
+            )
+            if (!isOurs) return previous
+            return {
+              ...previous,
+              columns: previous.columns.map((column) =>
+                column.id === updatedColumn.id ? updatedColumn : column
+              ),
+            }
+          })
+        }
+
+        if (payload.eventType === 'DELETE') {
+          const deletedId = payload.old.id
+          if (!deletedId) return
+          if (writeInFlight([deletedId])) return
+          // منطقِ پاک‌سازی ستون و کارت‌هایش pure است و جدا تست می‌شود؛
+          // شامل تستِ idempotent بودن و نادیده‌گرفتن ستونِ بوردِ دیگر.
+          setBoardData((previous) => applyColumnDelete(previous, deletedId))
+        }
+    }
+
+    /**
+     * فیلتر سمت سرور فقط برای INSERT/UPDATE؛ DELETE جداگانه و بدون فیلتر.
+     *
+     * با REPLICA IDENTITY DEFAULT رکورد DELETE فقط کلید اصلی دارد و فیلتر
+     * `board_id=eq.…` روی آن قابل ارزیابی نیست، پس رویدادِ حذف با فیلتر
+     * بی‌صدا نمی‌رسد. راه‌حل: INSERT/UPDATE با فیلتر (کاربر با چند بورد دیگر
+     * رویداد بوردهای دیگر را نمی‌گیرد) و DELETE بدون فیلتر؛ مالکیتِ DELETE
+     * همان‌طور که قبلاً بود از روی کش سنجیده می‌شود (`writeInFlight` و
+     * `applyColumnDelete` / filter روی id). `cards.board_id` را trigger
+     * دیتابیس نگه می‌دارد (مهاجرت 20260101000002).
+     */
+    const filter = `board_id=eq.${boardId}`
+
     const buildChannel = (): RealtimeChannel =>
       supabase
         .channel(`board-${boardId}`)
-        .on<Card>(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'cards' },
-          (payload) => {
-            if (payload.eventType === 'INSERT') {
-              const newCard = payload.new
-              // قاعده ۲: create در جریان، خودش رکورد را جایگزین می‌کند
-              if (writeInFlight([pendingCreateKey('card', newCard.column_id)])) return
-              setBoardData((previous) => {
-                const belongsToBoard = previous.columns.some(
-                  (column) => column.id === newCard.column_id
-                )
-                const alreadyKnown = previous.cards.some(
-                  (card) => card.id === newCard.id
-                )
-                if (!belongsToBoard || alreadyKnown) return previous
-                return { ...previous, cards: [...previous.cards, newCard] }
-              })
-            }
-
-            if (payload.eventType === 'UPDATE') {
-              const updatedCard = payload.new
-              // قاعده ۱: نوشتن خوش‌بینانه در جریان، مالک این رکورد است
-              if (writeInFlight([updatedCard.id])) return
-              setBoardData((previous) => {
-                const belongsToBoard = previous.columns.some(
-                  (column) => column.id === updatedCard.column_id
-                )
-                if (!belongsToBoard) return previous
-                return {
-                  ...previous,
-                  cards: previous.cards.map((card) =>
-                    card.id === updatedCard.id ? updatedCard : card
-                  ),
-                }
-              })
-            }
-
-            if (payload.eventType === 'DELETE') {
-              const deletedId = payload.old.id
-              if (!deletedId) return
-              if (writeInFlight([deletedId])) return
-              setBoardData((previous) => ({
-                ...previous,
-                cards: previous.cards.filter((card) => card.id !== deletedId),
-              }))
-            }
-          }
-        )
-        .on<Column>(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'columns',
-            // عمداً فیلتر سمت سرور نداریم.
-            //
-            // با REPLICA IDENTITY DEFAULT (پیش‌فرض Postgres) رکورد DELETE در WAL
-            // فقط کلید اصلی را دارد. پس فیلتر `board_id=eq.…` در سرور قابل ارزیابی
-            // نیست و رویداد DELETE بی‌سروصدا حذف می‌شود — یعنی حذف ستون از بوردِ
-            // دیگران هرگز به این کلاینت نمی‌رسد. راه‌حل Postgres این است که روی
-            // جدول `replica identity full` بگذاریم، ولی این کل بدنه‌ی سطر را در
-            // WAL می‌نویسد و هزینه‌ی WAL را بالا می‌برد؛ در عوض سربارش با فیلتر
-            // کردن کل رویدادهای بوردهای دیگر روی کلاینت مقایسه می‌شود.
-            //
-            // مالکیت را به‌جای فیلتر سرور، سمت کلاینت و از روی کش می‌سنجیم؛ برای
-            // INSERT/UPDATE که board_id کامل دارند مستقیم، و برای DELETE که فقط
-            // id دارد، از طریق «آیا این id در کش من هست؟».
-          },
-          (payload) => {
-            if (payload.eventType === 'INSERT') {
-              const newColumn = payload.new
-              if (newColumn.board_id !== boardId) return
-              // قاعده ۲: create ستون در جریان، خودش رکورد را جایگزین می‌کند.
-              // کلید روی بورد است چون INSERT شناسه‌ی واقعی ستون را دارد، نه
-              // شناسه‌ی موقتی که ما ساخته‌ایم.
-              if (writeInFlight([pendingCreateKey('column', boardId)])) return
-              setBoardData((previous) => {
-                const alreadyKnown = previous.columns.some(
-                  (column) => column.id === newColumn.id
-                )
-                if (alreadyKnown) return previous
-                return { ...previous, columns: [...previous.columns, newColumn] }
-              })
-            }
-
-            if (payload.eventType === 'UPDATE') {
-              const updatedColumn = payload.new
-              if (updatedColumn.board_id !== boardId) return
-              if (writeInFlight([updatedColumn.id])) return
-              setBoardData((previous) => {
-                const isOurs = previous.columns.some(
-                  (column) => column.id === updatedColumn.id
-                )
-                if (!isOurs) return previous
-                return {
-                  ...previous,
-                  columns: previous.columns.map((column) =>
-                    column.id === updatedColumn.id ? updatedColumn : column
-                  ),
-                }
-              })
-            }
-
-            if (payload.eventType === 'DELETE') {
-              const deletedId = payload.old.id
-              if (!deletedId) return
-              if (writeInFlight([deletedId])) return
-              // منطقِ پاک‌سازی ستون و کارت‌هایش pure است و جدا تست می‌شود؛
-              // شامل تستِ idempotent بودن و نادیده‌گرفتن ستونِ بوردِ دیگر.
-              setBoardData((previous) => applyColumnDelete(previous, deletedId))
-            }
-          }
-        )
+        .on<Card>('postgres_changes', { event: 'INSERT', schema: 'public', table: 'cards', filter }, onCardChange)
+        .on<Card>('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'cards', filter }, onCardChange)
+        .on<Card>('postgres_changes', { event: 'DELETE', schema: 'public', table: 'cards' }, onCardChange)
+        .on<Column>('postgres_changes', { event: 'INSERT', schema: 'public', table: 'columns', filter }, onColumnChange)
+        .on<Column>('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'columns', filter }, onColumnChange)
+        .on<Column>('postgres_changes', { event: 'DELETE', schema: 'public', table: 'columns' }, onColumnChange)
 
     const connect = () => {
       if (disposed) return

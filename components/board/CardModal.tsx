@@ -2,9 +2,11 @@
 
 import { useCallback, useMemo, useRef, useState } from 'react'
 import type { CardMutations } from '@/hooks/useCardMutations'
+import { isAppError } from '@/lib/errors/AppError'
+import { ERROR_CODES } from '@/lib/errors/errorCodes'
 import { validateTitle } from '@/lib/board/validation'
 import type { Card as CardType, CardFieldPatch } from '@/lib/board/types'
-import { LABEL_COLORS } from '@/lib/labelColors'
+import { LABEL_COLORS, resolveLabelKey } from '@/lib/labelColors'
 import { formatDueDate, getDueDateStatus } from '@/lib/dueDate'
 import {
   CARD_FIELD_LABELS,
@@ -102,8 +104,19 @@ export default function CardModal({ card, cardMutations, onClose }: Props) {
     }
 
     // یک patch واحد: یک mutation، یک به‌روزرسانی خوش‌بینانه، یک invalidate.
-    // مبنا `base` است نه `card`، تا فیلدی که کاربر دستش نزده دست‌نخورده بماند
-    const patch = buildCardPatch(base, draft) as CardFieldPatch
+    // فقط فیلدهایی که کاربر دست زده (draft ≠ base) و هنوز روی سرور آن مقدار
+    // را ندارند (draft ≠ server). `expected` مقدار خامِ فعلیِ سرور برای همان
+    // فیلدهاست؛ دیتابیس فقط در صورتی می‌نویسد که تا این لحظه عوض نشده باشند.
+    // در تعارضِ آگاهانه («ذخیره به هر حال») هم expected همان مقدار جدید سرور
+    // است، یعنی بازنویسی فقط نسخه‌ای را می‌گیرد که کاربر دیده.
+    const fullPatch = buildCardPatch(base, draft)
+    const patch: Record<string, string | null> = {}
+    const expected: Record<string, string | null> = {}
+    for (const field of Object.keys(fullPatch) as Array<keyof typeof fullPatch>) {
+      if (draft[field] === server[field]) continue
+      patch[field] = fullPatch[field] ?? null
+      expected[field] = card[field]
+    }
     if (Object.keys(patch).length === 0) {
       onClose()
       return
@@ -112,17 +125,24 @@ export default function CardModal({ card, cardMutations, onClose }: Props) {
     busyRef.current = true
     setSaveError(null)
     try {
-      // تا resolve شدن واقعی صبر می‌کند؛ onClose فقط بعد از آن
-      await cardMutations.updateCardAsync({ cardId: card.id, patch })
+      await cardMutations.updateCardAsync({
+        cardId: card.id,
+        patch: patch as CardFieldPatch,
+        expected: expected as CardFieldPatch,
+      })
       onClose()
-    } catch {
-      // خطا پیش‌تر در mutation گزارش و cache rollback شده؛ اینجا فقط دلیل
-      // باز ماندن modal و امکان retry را به کاربر می‌گوییم
-      setSaveError('ذخیره نشد. تغییرات شما اینجاست؛ دوباره تلاش کنید.')
+    } catch (error) {
+      if (isAppError(error) && error.code === ERROR_CODES.CONFLICT) {
+        setSaveError(
+          'کارت همین لحظه در جای دیگری تغییر کرد. آخرین نسخه بارگذاری می‌شود؛ تغییراتتان را بررسی و دوباره ذخیره کنید.'
+        )
+      } else {
+        setSaveError('ذخیره نشد. تغییرات شما اینجاست؛ دوباره تلاش کنید.')
+      }
     } finally {
       busyRef.current = false
     }
-  }, [base, card.id, cardMutations, draft, onClose, title])
+  }, [base, card, cardMutations, draft, onClose, server, title])
 
   const handleLabelClick = useCallback(
     (color: string) => {
@@ -130,7 +150,9 @@ export default function CardModal({ card, cardMutations, onClose }: Props) {
       // toggle است، نه بخشی از فرم: پس‌زمینه اجرا می‌شود
       cardMutations.updateCard({
         cardId: card.id,
-        patch: { label_color: card.label_color === color ? null : color },
+        patch: {
+          label_color: resolveLabelKey(card.label_color) === color ? null : color,
+        },
       })
     },
     [card.id, card.label_color, cardMutations]
@@ -258,16 +280,16 @@ export default function CardModal({ card, cardMutations, onClose }: Props) {
             </legend>
             <div className="flex flex-wrap gap-2">
               {LABEL_COLORS.map((label) => {
-                const isActive = card.label_color === label.value
+                const isActive = resolveLabelKey(card.label_color) === label.key
                 return (
                   <button
-                    key={label.value}
+                    key={label.key}
                     type="button"
                     title={label.name}
                     aria-label={`لیبل ${label.name}`}
                     aria-pressed={isActive}
                     disabled={isPending}
-                    onClick={() => handleLabelClick(label.value)}
+                    onClick={() => handleLabelClick(label.key)}
                     className={[
                       // چیپ است، نه دکمهٔ گرد: `radius-full` فقط برای دایرهٔ
                       // واقعی (DESIGN_PLAN.md §۷)

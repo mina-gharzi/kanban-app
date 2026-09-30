@@ -1,23 +1,33 @@
+/**
+ * برچسب‌ها در دیتابیس به‌صورت «کلید» ذخیره می‌شوند (red, blue, …) نه رنگ CSS.
+ * `value` فقط برای رندر است؛ تغییر پالت داده‌ی قدیمی را بی‌معنا نمی‌کند.
+ */
 export const LABEL_COLORS = [
-  { name: 'قرمز', value: 'rgb(190, 49, 68)' },
-  { name: 'آبی', value: 'rgb(58, 71, 80)' },
-  { name: 'سبز', value: 'rgb(78, 140, 105)' },
-  { name: 'زرد', value: 'rgb(200, 160, 60)' },
-  { name: 'بنفش', value: 'rgb(120, 90, 160)' },
+  { key: 'red', name: 'قرمز', value: 'rgb(190, 49, 68)' },
+  { key: 'blue', name: 'آبی', value: 'rgb(58, 71, 80)' },
+  { key: 'green', name: 'سبز', value: 'rgb(78, 140, 105)' },
+  { key: 'yellow', name: 'زرد', value: 'rgb(200, 160, 60)' },
+  { key: 'purple', name: 'بنفش', value: 'rgb(120, 90, 160)' },
 ] as const
 
-const LABEL_VALUES: ReadonlySet<string> = new Set(
-  LABEL_COLORS.map((label) => label.value)
-)
+export type LabelKey = (typeof LABEL_COLORS)[number]['key']
 
 /**
- * آیا این رشته یکی از لیبل‌های واقعی است؟
- *
- * برای ورودی‌های بیرونی (مثل `?label=…` در URL که کاربر می‌تواند
- * دستکاری کند) لازم است: بدون این بررسی، لینک دست‌کاری‌شده کاربر را به
- * وضعیتی می‌برد که هیچ دکمه‌ای در آن `aria-pressed` ندارد و نتیجه‌اش
- * همیشه خالی است.
+ * کلید معتبر برچسب را از هر ورودی برمی‌گرداند؛ مقدار قدیمی `rgb(...)`
+ * (داده‌ی پیش از مهاجرت، یا لینک‌های ذخیره‌شده با `?label=rgb(...)`) هم به
+ * کلید نگاشت می‌شود تا ترتیب استقرار مهاجرت و کلاینت مهم نباشد.
  */
-export function isKnownLabelColor(value: string): boolean {
-  return LABEL_VALUES.has(value)
+export function resolveLabelKey(value: string | null | undefined): LabelKey | null {
+  if (!value) return null
+  const match = LABEL_COLORS.find((l) => l.key === value || l.value === value)
+  return match?.key ?? null
+}
+
+export function isKnownLabelKey(value: string): boolean {
+  return resolveLabelKey(value) !== null
+}
+
+export function labelOf(value: string | null | undefined) {
+  const key = resolveLabelKey(value)
+  return LABEL_COLORS.find((l) => l.key === key) ?? null
 }
