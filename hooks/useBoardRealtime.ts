@@ -12,7 +12,9 @@ import { ERROR_CODES } from '@/lib/errors/errorCodes'
 import { logError } from '@/lib/errors/logError'
 import { applyColumnDelete } from '@/lib/board/realtime'
 import type { BoardData, Card, Column } from '@/lib/board/types'
+import { createResyncTracker, shouldResyncOnVisible } from '@/lib/board/resync'
 import { queryKeys } from '@/lib/queries/keys'
+import { countPendingBoardMutations } from '@/lib/queries/reconcile'
 import { hasOptimisticWrite, pendingCreateKey } from '@/lib/queries/mutationQueue'
 import { supabase } from '@/lib/supabase/client'
 
@@ -74,6 +76,10 @@ const RETRY_DELAYS_MS = [1000, 2000, 4000, 8000, 10000]
  * با backoff نمایی دوباره تلاش می‌شود. کانالِ قبلی resubscribe نمی‌شود؛
  * طبق رفتار فعلی supabase-js یک کانال تازه ساخته می‌شود، چون کانالی که
  * یک‌بار به خطا خورده وضعیتش برای تلاش دوباره قابل‌اعتماد نیست.
+ *
+ * پنجم — جبران رویدادهای گم‌شده: Realtime هیچ رویدادی را بازپخش نمی‌کند،
+ * پس بعد از هر اتصال مجدد (و بعد از بازگشتِ تبِ طولانی‌مخفی یا رویداد
+ * `online`) کش بورد invalidate می‌شود. جزئیات در `lib/board/resync.ts`.
  */
 export function useBoardRealtime(boardId: string): RealtimeStatus {
   const queryClient = useQueryClient()
@@ -89,8 +95,24 @@ export function useBoardRealtime(boardId: string): RealtimeStatus {
     let channel: RealtimeChannel | null = null
     let retryTimeout: ReturnType<typeof setTimeout> | null = null
     let attempt = 0
+    const resyncTracker = createResyncTracker()
 
     const boardKey = queryKeys.board(boardId)
+
+    /**
+     * هم‌گام‌سازی کش با سرور بعد از اتصال مجدد.
+     *
+     * Realtime رویداد از‌دست‌رفته را بازپخش نمی‌کند؛ هر تغییری که در فاصله‌ی
+     * قطعی رخ داده فقط با خواندن دوباره به این تب می‌رسد. اگر mutationی از
+     * همین بورد در جریان باشد کاری نمی‌کنیم: refetch وسط کار داده‌ی
+     * optimistic را پاک می‌کند و `reconcileBoard` در onSettled همان
+     * mutation به‌هرحال داده را تازه می‌کند.
+     */
+    const resync = (): void => {
+      if (disposed) return
+      if (countPendingBoardMutations(queryClient, boardId) > 0) return
+      void queryClient.invalidateQueries({ queryKey: boardKey })
+    }
     const setBoardData = (updater: (previous: BoardData) => BoardData): void => {
       queryClient.setQueryData<BoardData>(boardKey, (previous) =>
         previous ? updater(previous) : previous
@@ -131,6 +153,9 @@ export function useBoardRealtime(boardId: string): RealtimeStatus {
       // اتصال موفق: شمارنده صفر می‌شود تا شکست بعدی دوباره از کوتاه‌ترین
       // تأخیر شروع کند، نه از سقفِ تلاشِ قبلی.
       if (next === 'live') attempt = 0
+
+      // اتصال مجدد (نه اولین اتصال) ⇒ رویدادهای گم‌شده را با refetch جبران کن
+      if (resyncTracker.onStatus(next)) resync()
 
       if (next === 'error') {
         // فقط روی گذار به خطا لاگ می‌شود، نه هر بار که همان خطا تکرار شود؛
@@ -279,8 +304,25 @@ export function useBoardRealtime(boardId: string): RealtimeStatus {
 
     connect()
 
+    // لایه‌ی دوم: تب مدتی مخفی بوده (خواب لپ‌تاپ، تب پس‌زمینه) یا شبکه برگشته.
+    // سوکت ممکن است هنوز «زنده» به نظر برسد ولی رویدادها را از دست داده باشد.
+    let hiddenAt: number | null = null
+    const onVisibility = (): void => {
+      if (document.visibilityState === 'hidden') {
+        hiddenAt = Date.now()
+        return
+      }
+      if (shouldResyncOnVisible(hiddenAt, Date.now())) resync()
+      hiddenAt = null
+    }
+    const onOnline = (): void => resync()
+    document.addEventListener('visibilitychange', onVisibility)
+    window.addEventListener('online', onOnline)
+
     return () => {
       disposed = true
+      document.removeEventListener('visibilitychange', onVisibility)
+      window.removeEventListener('online', onOnline)
       clearRetry()
       lastStatusRef.current = 'connecting'
       if (channel) void supabase.removeChannel(channel)
