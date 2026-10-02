@@ -31,6 +31,9 @@ type Props = {
   /** نام دسترس‌پذیر برای منو */
   label: string
   align?: 'start' | 'end'
+  /** بلوک اطلاعاتیِ غیرقابل‌انتخاب بالای آیتم‌ها (مثلاً هویت کاربر) */
+  header?: ReactNode
+  menuClassName?: string
 }
 
 const TONES = {
@@ -46,7 +49,14 @@ const TONES = {
  * به‌جای دوختن focus با `tabIndex` منفی، خود آیتم فوکوس می‌گیرد تا
  * screen reader هر بار همان آیتم را از نو نخواند.
  */
-export default function Dropdown({ trigger, items, label, align = 'end' }: Props) {
+export default function Dropdown({
+  trigger,
+  items,
+  label,
+  align = 'end',
+  header,
+  menuClassName = '',
+}: Props) {
   const [isOpen, setIsOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(0)
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -149,8 +159,17 @@ export default function Dropdown({ trigger, items, label, align = 'end' }: Props
             // ۱۸۰ms با همان easing سراسری — DESIGN_PLAN.md §۸ برای باز/بسته شدن
             'animate-[menu-in_180ms_var(--ease-out-soft)]',
             align === 'end' ? 'end-0' : 'start-0',
+            menuClassName,
           ].join(' ')}
         >
+          {header && (
+            <>
+              <div role="presentation" className="px-2.5 pb-2 pt-1.5">
+                {header}
+              </div>
+              <div role="separator" className="mx-1 mb-1 h-px bg-border" />
+            </>
+          )}
           {items.map((item, index) => (
             <button
               key={item.label}

@@ -30,7 +30,7 @@ export default function AppHeader({
   navControlsId,
 }: Props) {
   return (
-    <header className="z-30 h-14 shrink-0 border-b border-border bg-surface/85 backdrop-blur-md">
+    <header className="z-30 h-14 shrink-0 border-b border-border bg-bg/80 backdrop-blur-md">
       <div className="flex h-full items-center gap-3 px-4 sm:px-6">
         {onToggleNav && (
           <IconButton
@@ -48,7 +48,7 @@ export default function AppHeader({
           href="/boards"
           className="flex shrink-0 items-center gap-2 rounded-md text-text transition-opacity hover:opacity-80"
         >
-          <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-on-primary">
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-on-primary shadow-xs">
             <BoardsIcon size={16} />
           </span>
           {/* بدون `tracking-tight`: روی خط فارسی مجاز نیست (DESIGN_PLAN.md §۴.۳) */}
@@ -56,12 +56,12 @@ export default function AppHeader({
         </Link>
 
         {meta && (
-          <div className="flex min-w-0 flex-1 items-center gap-2 border-s border-border ps-3">
+          <div className="flex min-w-0 flex-1 items-center gap-2 border-s border-border ps-3 text-meta text-text-2">
             {meta}
           </div>
         )}
 
-        <div className="ms-auto flex shrink-0 items-center gap-1">
+        <div className="ms-auto flex shrink-0 items-center gap-2 sm:gap-3">
           <ThemeToggle />
           <UserMenu />
         </div>
