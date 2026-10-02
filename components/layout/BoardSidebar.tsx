@@ -7,6 +7,7 @@ import { BoardsIcon, PlusIcon } from '@/components/ui/icons'
 import { buttonClass } from '@/components/ui/Button'
 import Skeleton from '@/components/ui/Skeleton'
 import { boardColor, boardInitial } from '@/lib/board/boardColor'
+import { readableInk } from '@/lib/labelColors'
 
 type Props = {
   onNavigate: () => void
@@ -90,7 +91,7 @@ export default function BoardSidebar({ onNavigate }: Props) {
                       className={`absolute inset-y-2 inset-s-0 w-1 rounded-full transition-opacity duration-150 ${
                         isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-50'
                       }`}
-                      style={{ backgroundColor: color }}
+                      style={{ backgroundColor: color, color: readableInk(color) }}
                     />
 
                     <span

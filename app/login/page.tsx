@@ -1,8 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useAuthMutations } from '@/hooks/useAuthMutations'
+import { safeNextPath } from '@/lib/auth/redirects'
 import AuthCard from '@/components/auth/AuthCard'
 import Button from '@/components/ui/Button'
 import Field from '@/components/ui/Field'
@@ -14,12 +16,27 @@ export default function LoginPage() {
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [linkError, setLinkError] = useState(false)
+
+  // /auth/callback با `?error=link` برمی‌گرداند. در useEffect خوانده می‌شود تا
+  // صفحه‌ی ورود استاتیک بماند و hydration ناسازگار نشود.
+  useEffect(() => {
+    setLinkError(new URLSearchParams(window.location.search).get('error') === 'link')
+  }, [])
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
     signIn(
       { email, password },
-      { onSuccess: () => router.push('/boards') }
+      {
+        onSuccess: () => {
+          // بازگشت به صفحه‌ای که کاربر می‌خواست (proxy ‎?next= می‌گذارد).
+          // `window.location` به‌جای `useSearchParams` تا صفحه‌ی ورود مجبور
+          // به Suspense و رندر داینامیک نشود؛ این کد فقط بعد از کلیک اجرا می‌شود.
+          const next = new URLSearchParams(window.location.search).get('next')
+          router.push(safeNextPath(next))
+        },
+      }
     )
   }
 
@@ -29,6 +46,16 @@ export default function LoginPage() {
       subtitle="برای دسترسی به بوردهایتان وارد شوید."
       footerLink={{ href: '/register', label: 'حساب نداری؟ ثبت‌نام کنید' }}
     >
+      {linkError && (
+        <p
+          role="alert"
+          className="mb-4 rounded-lg border border-danger/30 bg-danger-soft px-3 py-2 text-meta leading-6 text-danger"
+        >
+          لینک ایمیل معتبر نیست یا منقضی شده. آن را در همان مرورگری باز کنید که
+          درخواست را داده‌اید، یا دوباره درخواست دهید.
+        </p>
+      )}
+
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <Field id="email" label="ایمیل" required>
           {({ id, describedBy }) => (
@@ -62,6 +89,15 @@ export default function LoginPage() {
             />
           )}
         </Field>
+
+        <div className="-mt-2 text-end">
+          <Link
+            href="/forgot-password"
+            className="rounded text-meta font-medium text-primary underline-offset-4 hover:underline"
+          >
+            رمز عبور را فراموش کرده‌اید؟
+          </Link>
+        </div>
 
         <Button type="submit" fullWidth loading={isSigningIn} className="mt-1">
           {isSigningIn ? 'در حال ورود…' : 'ورود'}

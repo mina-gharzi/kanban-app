@@ -9,6 +9,7 @@ import type { ColumnMutations } from '@/hooks/useColumnMutations'
 import { isTemporaryId } from '@/lib/board/optimistic'
 import type { Card, Column as ColumnType } from '@/lib/board/types'
 import AddCardForm from './AddCardForm'
+import { useBoardPermissions } from './BoardPermissions'
 import CardComponent from './Card'
 import ColumnHeader from './ColumnHeader'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
@@ -35,11 +36,12 @@ function Column({
   // نه حذف می‌شود و نه کارت تازه می‌گیرد (کارت در ستونِ ناموجود در سرور
   // شکست می‌خورد)
   const isPending = isTemporaryId(column.id)
+  const { canEdit } = useBoardPermissions()
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false)
 
   const { setNodeRef: setDroppableRef, isOver } = useDroppable({
     id: column.id,
-    disabled: isPending,
+    disabled: isPending || !canEdit,
   })
 
   const {
@@ -52,7 +54,7 @@ function Column({
   } = useSortable({
     id: column.id,
     data: { type: 'column' },
-    disabled: isPending,
+    disabled: isPending || !canEdit,
     attributes: { roleDescription: 'قابل جابه‌جایی' },
   })
 
@@ -136,7 +138,7 @@ function Column({
           ) : null}
         </div>
 
-        {!isPending && (
+        {!isPending && canEdit && (
           <div className="mt-2">
             <AddCardForm
               onAdd={(title) =>

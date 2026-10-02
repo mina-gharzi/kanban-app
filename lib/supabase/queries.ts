@@ -1,3 +1,4 @@
+import { resolveBoardRole, type InviteRole } from '@/lib/sharing/roles'
 import { supabase } from './client'
 import { AppError } from '@/lib/errors/AppError'
 import { ERROR_CODES } from '@/lib/errors/errorCodes'
@@ -102,13 +103,25 @@ export async function getBoardData(boardId: string): Promise<BoardData> {
 }
 
 export async function getBoards(): Promise<Board[]> {
-  const { data, error } = await supabase
-    .from('boards')
-    .select('*')
-    .order('created_at', { ascending: false })
+  const { data: sessionData } = await supabase.auth.getSession()
+  const userId = sessionData.session?.user.id
+  if (!userId) return []
 
-  if (error) throw normalizeError(error)
-  return (data ?? []) as Board[]
+  // بوردهای من + بوردهایی که با من به اشتراک گذاشته شده (RLS هر دو را برمی‌گرداند)
+  const [boardsResult, membershipsResult] = await Promise.all([
+    supabase.from('boards').select('*').order('created_at', { ascending: false }),
+    supabase.from('board_members').select('board_id, role').eq('user_id', userId),
+  ])
+  if (boardsResult.error) throw normalizeError(boardsResult.error)
+  if (membershipsResult.error) throw normalizeError(membershipsResult.error)
+
+  const roleByBoard = new Map(
+    (membershipsResult.data ?? []).map((m) => [m.board_id as string, m.role as InviteRole]),
+  )
+  return (boardsResult.data ?? []).map((row) => ({
+    ...(row as Board),
+    role: resolveBoardRole(row as Board, userId, roleByBoard.get(row.id as string)),
+  }))
 }
 
 export async function createBoard(title: string): Promise<Board> {
@@ -128,7 +141,7 @@ export async function createBoard(title: string): Promise<Board> {
     .single()
 
   if (error) throw normalizeError(error)
-  return data as Board
+  return { ...(data as Board), role: 'owner' }
 }
 
 export async function deleteBoard(boardId: string) {

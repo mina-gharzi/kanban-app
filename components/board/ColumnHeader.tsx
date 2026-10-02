@@ -1,5 +1,6 @@
 'use client'
 
+import { useBoardPermissions } from './BoardPermissions'
 import { useEffect, useRef, useState } from 'react'
 import type { Column as ColumnType } from '@/lib/board/types'
 import { validateTitle } from '@/lib/board/validation'
@@ -36,6 +37,7 @@ export default function ColumnHeader({
   onRename,
   onRequestDelete,
 }: Props) {
+  const { canEdit } = useBoardPermissions()
   const [isEditing, setIsEditing] = useState(false)
   const [draftTitle, setDraftTitle] = useState(column.title)
   const [error, setError] = useState<string | null>(null)
@@ -138,7 +140,7 @@ export default function ColumnHeader({
         {cardCount}
       </span>
 
-      {!isPending && !isEditing && (
+      {!isPending && !isEditing && canEdit && (
         <Dropdown
           label={`کنش‌های ستون ${column.title}`}
           items={menuItems}

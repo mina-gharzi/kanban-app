@@ -1,17 +1,9 @@
 'use client'
 
-import { useCallback, useEffect, useId, useRef, type ReactNode } from 'react'
+import { useId, useRef, type ReactNode } from 'react'
+import { useFocusTrap } from '@/hooks/useFocusTrap'
 import { IconButton } from './IconButton'
 import { XIcon } from './icons'
-
-const FOCUSABLE = [
-  'a[href]',
-  'button:not([disabled])',
-  'input:not([disabled])',
-  'select:not([disabled])',
-  'textarea:not([disabled])',
-  '[tabindex]:not([tabindex="-1"])',
-].join(',')
 
 type Props = {
   title: string
@@ -65,64 +57,19 @@ export default function Modal({
   const titleId = useId()
   const descriptionId = useId()
 
-  // بستن با Escape + نگه‌داشتن Tab داخل dialog
-  const handleKeyDown = useCallback(
-    (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        // در حالت غیرقابل‌بستن، Escape هم نباید کاری کند
-        if (!dismissible) return
-        event.stopPropagation()
-        onClose()
-        return
-      }
-      if (event.key !== 'Tab') return
-
-      const panel = panelRef.current
-      if (!panel) return
-      const focusable = Array.from(
-        panel.querySelectorAll<HTMLElement>(FOCUSABLE)
-      ).filter((element) => element.offsetParent !== null || element === document.activeElement)
-
-      if (focusable.length === 0) {
-        event.preventDefault()
-        return
-      }
-
-      const first = focusable[0]
-      const last = focusable[focusable.length - 1]
-      if (!first || !last) return
-
-      const active = document.activeElement
-      if (!event.shiftKey && active === last) {
-        event.preventDefault()
-        first.focus()
-      } else if (event.shiftKey && (active === first || active === panel)) {
-        event.preventDefault()
-        last.focus()
-      }
-    },
-    [dismissible, onClose]
-  )
-
-  useEffect(() => {
-    const previouslyFocused = document.activeElement as HTMLElement | null
-    const { overflow } = document.body.style
-    document.body.style.overflow = 'hidden'
-    document.addEventListener('keydown', handleKeyDown, true)
-
-    // فوکوس اولیه: عنصر اعلام‌شده، وگرنه اولین کنترل، وگرنه خود panel
-    const target =
-      initialFocusRef?.current ??
-      panelRef.current?.querySelector<HTMLElement>(FOCUSABLE) ??
-      panelRef.current
-    target?.focus()
-
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown, true)
-      document.body.style.overflow = overflow
-      previouslyFocused?.focus()
-    }
-  }, [handleKeyDown, initialFocusRef])
+  // Escape، تله‌ی فوکوس، قفل اسکرول و بازگرداندن فوکوس همه در useFocusTrap‌اند:
+  //  • handlerها با ref پایدارند؛ `onClose` جدید در هر رندرِ والد (مثلاً با هر
+  //    رویداد realtime) دیگر افکت را از نو اجرا نمی‌کند و فوکوسِ کاربر وسط
+  //    تایپ دزدیده نمی‌شود.
+  //  • فقط بالاترین مودالِ تو‌در‌تو به Escape جواب می‌دهد.
+  //  • قفل اسکرول شمارنده‌دار است.
+  useFocusTrap({
+    active: true,
+    containerRef: panelRef,
+    initialFocusRef,
+    onEscape: dismissible ? onClose : undefined,
+    lockScroll: true,
+  })
 
   return (
     <div

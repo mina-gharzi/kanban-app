@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, type RefObject } from 'react'
+import { lockBodyScroll } from '@/lib/scrollLock'
 
 const FOCUSABLE = [
   'a[href]',
@@ -66,8 +67,7 @@ export function useFocusTrap({
     if (!container) return
 
     const previouslyFocused = document.activeElement as HTMLElement | null
-    const previousOverflow = document.body.style.overflow
-    if (lockScroll) document.body.style.overflow = 'hidden'
+    const unlockScroll = lockScroll ? lockBodyScroll() : null
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
@@ -121,7 +121,7 @@ export function useFocusTrap({
 
     return () => {
       document.removeEventListener('keydown', handleKeyDown, true)
-      if (lockScroll) document.body.style.overflow = previousOverflow
+      unlockScroll?.()
       // اگر عنصر trigger هنوز در DOM باشد فوکوس برمی‌گردد؛ وگرنه بدون خطا رد می‌شویم
       if (returnFocus && previouslyFocused?.isConnected) previouslyFocused.focus()
     }

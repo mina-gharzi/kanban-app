@@ -9,6 +9,7 @@ import type { ColumnMutations } from '@/hooks/useColumnMutations'
 import { groupCardsByColumn } from '@/lib/board/layout'
 import type { Card, Column as ColumnType } from '@/lib/board/types'
 import AddColumnForm from './AddColumnForm'
+import { useBoardPermissions } from './BoardPermissions'
 import BoardDragOverlay from './BoardDragOverlay'
 import Column from './Column'
 import EmptyState from '@/components/ui/EmptyState'
@@ -89,6 +90,7 @@ export default function BoardContent({
     onColumnMove: columnMutations.moveColumn,
   })
 
+  const { canEdit } = useBoardPermissions()
   const columnIds = useMemo(() => columns.map((column) => column.id), [columns])
   // داده‌ی مشتق: کارت‌های هر ستون، بدون نگهداری در state
   const cardsByColumn = useMemo(() => groupCardsByColumn(cards), [cards])
@@ -106,9 +108,11 @@ export default function BoardContent({
               title="این بورد هنوز ستونی ندارد"
               description="کارها را در ستون‌ها دسته‌بندی کنید. اولین ستون را از دکمه‌ی «افزودن ستون» بسازید."
             />
-            <div className="mx-auto mt-2 w-full max-w-xs pb-4">
-              <AddColumnForm onAdd={columnMutations.createColumn} />
-            </div>
+            {canEdit && (
+              <div className="mx-auto mt-2 w-full max-w-xs pb-4">
+                <AddColumnForm onAdd={columnMutations.createColumn} />
+              </div>
+            )}
           </div>
         </div>
       </Canvas>
@@ -173,7 +177,7 @@ export default function BoardContent({
                 />
               ))}
             </SortableContext>
-            <AddColumnForm onAdd={columnMutations.createColumn} />
+            {canEdit && <AddColumnForm onAdd={columnMutations.createColumn} />}
           </div>
         </div>
 

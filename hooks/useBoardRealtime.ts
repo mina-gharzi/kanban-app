@@ -112,6 +112,8 @@ export function useBoardRealtime(boardId: string): RealtimeStatus {
       if (disposed) return
       if (countPendingBoardMutations(queryClient, boardId) > 0) return
       void queryClient.invalidateQueries({ queryKey: boardKey })
+      // نقش یا عضویت من ممکن است در فاصله‌ی قطعی عوض شده باشد
+      void queryClient.invalidateQueries({ queryKey: queryKeys.boards })
     }
     const setBoardData = (updater: (previous: BoardData) => BoardData): void => {
       queryClient.setQueryData<BoardData>(boardKey, (previous) =>

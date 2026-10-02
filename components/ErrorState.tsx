@@ -28,7 +28,7 @@ export default function ErrorState({ error, onRetry, className = '' }: Props) {
       </span>
       <div className="space-y-1">
         <p className="text-sm font-medium text-text">خطایی رخ داد</p>
-        <p className="mx-auto max-w-sm text-[13px] leading-relaxed text-text-2">
+        <p className="mx-auto max-w-sm text-meta leading-relaxed text-text-2">
           {error.userMessage}
         </p>
       </div>

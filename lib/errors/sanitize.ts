@@ -48,7 +48,13 @@ const BEARER = /\bBearer\s+[A-Za-z0-9._~+/=-]+/gi
 const EMAIL = /\b[\w.+-]+@[\w-]+\.[\w.-]+\b/g
 
 /** رشته‌هایی که نباید لو بروند، حتی اگر کلیدشان بی‌خطر به نظر برسد. */
-const VALUE_PATTERNS: readonly RegExp[] = [JWT, BEARER, EMAIL]
+/**
+ * کلیدهای جدید Supabase (`sb_secret_…`) JWT نیستند و الگوی بالا را دور می‌زدند؛
+ * اگر در متن خطا یا context بیفتند باید پاک شوند. (`sb_publishable_…` عمومی است.)
+ */
+const SB_SECRET = /\bsb_secret_[A-Za-z0-9_-]+/g
+
+const VALUE_PATTERNS: readonly RegExp[] = [JWT, BEARER, EMAIL, SB_SECRET]
 
 export const REDACTED = '[redacted]'
 

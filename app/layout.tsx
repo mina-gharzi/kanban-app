@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     default: 'کانبان — مدیریت کار',
     template: '%s · کانبان',
   },
-  description: 'مدیریت بورد و کارهای تیمی با نمای بورد.',
+  description: 'مدیریت کارها و پروژه‌ها با بورد: ستون، کارت، برچسب و سررسید.',
 }
 
 export const viewport: Viewport = {
@@ -68,6 +68,8 @@ export default function RootLayout({
     <html
       lang="fa"
       dir="rtl"
+      className="scroll-smooth"
+      data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
       <body className="min-h-dvh bg-bg text-text antialiased">

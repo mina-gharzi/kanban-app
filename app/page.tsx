@@ -11,13 +11,13 @@ import {
   ColumnIcon,
   LiveIcon,
 } from "@/components/ui/icons";
-import { LABEL_COLORS } from "@/lib/labelColors";
+import { LABEL_COLORS, readableInk } from "@/lib/labelColors";
 
 const STEPS = [
   {
     n: "۱",
     title: "بورد بسازید",
-    text: "فقط با ایمیل؛ فضای کار تیم در چند ثانیه آماده است.",
+    text: "فقط با ایمیل؛ فضای کار شما در چند ثانیه آماده است.",
     icon: BoardsIcon,
   },
   {
@@ -37,13 +37,13 @@ const STEPS = [
 const FEATURES = [
   {
     title: "ستون‌بندی انعطاف‌پذیر",
-    text: "هر تیم مسیر خودش را دارد؛ ستون‌ها را هر طور که کارتان می‌چرخد بسازید.",
+    text: "هر پروژه مسیر خودش را دارد؛ ستون‌ها را هر طور که کارتان می‌چرخد بسازید.",
     icon: ColumnIcon,
     span: "sm:col-span-4",
   },
   {
     title: "هم‌زمانی لحظه‌ای",
-    text: "تغییر یک نفر، بدون تازه‌سازی، پیش چشم همه.",
+    text: "تغییر در یک تب یا دستگاه، بدون تازه‌سازی، همه‌جا دیده می‌شود.",
     icon: LiveIcon,
     span: "sm:col-span-2",
     hot: true,
@@ -133,7 +133,7 @@ function Hero() {
             بدون کارت بانکی، کمتر از یک دقیقه
           </div>
           <h1 className="mt-6 text-balance text-[clamp(2.25rem,8vw,4.25rem)] font-semibold leading-[1.15] tracking-tight">
-            <span className="block">کارهای تیم را</span>
+            <span className="block">کارهایتان را</span>
             <span className="block text-text-muted">
               همین‌جا{" "}
               <span className="underline decoration-success decoration-4 underline-offset-8">
@@ -143,7 +143,7 @@ function Hero() {
             </span>
           </h1>
           <p className="mt-5 max-w-md text-body leading-7 text-text-2 sm:text-heading sm:leading-8">
-            یک بورد بسازید و جریان کار تیم را ساده‌تر و شفاف‌تر مدیریت کنید.
+            یک بورد بسازید و جریان کارتان را ساده‌تر و شفاف‌تر مدیریت کنید.
           </p>
           <div className="mt-7 flex flex-col gap-2.5 sm:flex-row">
             <Link
@@ -188,8 +188,10 @@ function ChaosToOrder() {
                   key={c}
                   className={`${tilts[i]} rounded-lg px-3 py-2 text-meta shadow-sm`}
                   style={{
-                    backgroundColor:
+                    backgroundColor: LABEL_COLORS[i % LABEL_COLORS.length].value,
+                    color: readableInk(
                       LABEL_COLORS[i % LABEL_COLORS.length].value,
+                    ),
                   }}
                 >
                   {c}
@@ -342,7 +344,7 @@ function CallToAction() {
           اولین کارت بورد شما منتظر است.
         </h2>
         <p className="mx-auto mt-3 max-w-md text-body leading-6 opacity-85">
-          حساب بسازید، تیم را دعوت کنید و همین امروز کارها را مرتب کنید.
+          حساب بسازید، اولین بوردتان را بسازید و همین امروز کارها را مرتب کنید.
         </p>
         <div className="mt-7 flex flex-col items-center justify-center gap-2.5 sm:flex-row">
           <Link

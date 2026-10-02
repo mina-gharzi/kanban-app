@@ -265,3 +265,14 @@ export function ShieldIcon(props: IconProps) {
     </Icon>
   )
 }
+
+export function UsersIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M16 20v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 18.5V20" />
+      <circle cx="10" cy="8" r="3.25" />
+      <path d="M20 20v-1.5a3.5 3.5 0 0 0-2.6-3.38" />
+      <path d="M15.5 4.9a3.25 3.25 0 0 1 0 6.2" />
+    </Icon>
+  )
+}

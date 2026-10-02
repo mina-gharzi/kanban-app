@@ -1,5 +1,6 @@
 'use client'
 
+import { useBoardPermissions } from './BoardPermissions'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { isTemporaryId } from '@/lib/board/optimistic'
@@ -44,6 +45,7 @@ const DUE_TONE = {
 export default function Card({ card, onOpen }: Props) {
   // کارتی که هنوز از سرور نیامده جابه‌جا یا ویرایش نمی‌شود؛ شناسه‌اش موقت است
   const isPending = isTemporaryId(card.id)
+  const { canEdit } = useBoardPermissions()
 
   const {
     attributes,
@@ -54,7 +56,7 @@ export default function Card({ card, onOpen }: Props) {
     isDragging,
   } = useSortable({
     id: card.id,
-    disabled: isPending,
+    disabled: isPending || !canEdit,
     // پیش‌فرض dnd-kit انگلیسی است («draggable»). اپ فارسی است.
     attributes: { roleDescription: 'قابل جابه‌جایی' },
   })

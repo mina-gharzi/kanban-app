@@ -21,7 +21,7 @@ function ToastItem({ toast }: { toast: Toast }) {
       className="pointer-events-auto flex w-full max-w-sm items-start gap-2.5 rounded-lg border border-border bg-surface py-2.5 px-3.5 shadow-md animate-[toast-in_180ms_var(--ease-out-soft)]"
     >
       <Icon size={17} className={`mt-px shrink-0 ${tone.iconClass}`} />
-      <p className="min-w-0 flex-1 text-[13px] leading-relaxed text-text">
+      <p className="min-w-0 flex-1 text-meta leading-relaxed text-text">
         {toast.message}
       </p>
       <button

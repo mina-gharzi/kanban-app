@@ -26,7 +26,7 @@ function AuthCheckingScreen() {
     <div className="flex min-h-dvh items-center justify-center bg-bg">
       <div className="flex flex-col items-center gap-3" role="status">
         <div className="h-8 w-8 animate-pulse rounded-lg bg-surface-3" />
-        <p className="text-[13px] text-text-muted">در حال بررسی نشست…</p>
+        <p className="text-meta text-text-muted">در حال بررسی نشست…</p>
       </div>
     </div>
   )

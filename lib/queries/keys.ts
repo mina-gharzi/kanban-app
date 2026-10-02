@@ -9,6 +9,12 @@
  */
 export const queryKeys = {
   boards: ['boards'] as const,
+
+  // اشتراک‌گذاری: عمداً زیر ['board', id] نیست تا invalidateِ داده‌ی بورد و scope
+  // mutationها (که با پیشوند ['board', id] تطبیق می‌خورند) با آن‌ها قاطی نشود
+  boardMembers: (boardId: string) => ['board-members', boardId] as const,
+  boardInvites: (boardId: string) => ['board-invites', boardId] as const,
+  myInvites: ['my-invites'] as const,
   board: (boardId: string) => ['board', boardId] as const,
 
   /** پیشوند مشترک همه‌ی mutationهای یک بورد. برای شمارش/فیلتر pending استفاده می‌شود. */

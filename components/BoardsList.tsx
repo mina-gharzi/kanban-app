@@ -14,6 +14,9 @@ import Input from "@/components/ui/Input";
 import Skeleton from "@/components/ui/Skeleton";
 import { ColumnIcon, PlusIcon, TrashIcon } from "@/components/ui/icons";
 import { boardColor, boardInitial, hashOf } from "@/lib/board/boardColor";
+import { readableInk } from "@/lib/labelColors";
+import { ROLE_LABELS } from "@/lib/sharing/roles";
+import MyInvitesPanel from "@/components/MyInvitesPanel";
 
 /** هش ساده و پایدار از id تا هر بورد هویت بصری ثابت خودش را داشته باشد */
 
@@ -87,7 +90,7 @@ export default function BoardsList() {
   return (
     <AppShell
       sidebar={BoardSidebar}
-      headerMeta={<span className="text-[13px] text-text-2">بوردهای من</span>}
+      headerMeta={<span className="text-meta text-text-2">بوردهای من</span>}
     >
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 sm:py-10">
@@ -163,6 +166,8 @@ export default function BoardsList() {
             </div>
           </section>
 
+          <MyInvitesPanel />
+
           <div className="mt-8">
             {isPending ? (
               <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -212,7 +217,7 @@ export default function BoardsList() {
                         >
                           <span
                             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-semibold text-text"
-                            style={{ backgroundColor: color }}
+                            style={{ backgroundColor: color, color: readableInk(color) }}
                           >
                             {boardInitial(board.title)}
                           </span>
@@ -226,12 +231,18 @@ export default function BoardsList() {
                                 "fa-IR",
                               )}
                             </p>
+                            {board.role && board.role !== "owner" && (
+                              <p className="mt-0.5 text-chip text-primary">
+                                اشتراکی · {ROLE_LABELS[board.role]}
+                              </p>
+                            )}
                           </span>
                         </Link>
 
                         <MiniColumns seed={seed} color={color} />
 
                         {/* بالاتر از لینک کشیده‌شده (z-10) تا کلیک‌پذیر بماند */}
+                        {(board.role ?? "owner") === "owner" && (
                         <button
                           type="button"
                           onClick={() => setPendingDelete(board.id)}
@@ -240,6 +251,7 @@ export default function BoardsList() {
                         >
                           <TrashIcon size={15} />
                         </button>
+                        )}
                       </div>
                     </li>
                   );

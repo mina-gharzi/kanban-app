@@ -1,5 +1,6 @@
 'use client'
 
+import { useBoardPermissions } from './BoardPermissions'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import type { CardMutations } from '@/hooks/useCardMutations'
 import { isAppError } from '@/lib/errors/AppError'
@@ -185,6 +186,8 @@ export default function CardModal({ card, cardMutations, onClose }: Props) {
     }
   }, [card.id, cardMutations, onClose])
 
+  const { canEdit } = useBoardPermissions()
+
   return (
     <>
       <Modal
@@ -193,6 +196,11 @@ export default function CardModal({ card, cardMutations, onClose }: Props) {
         size="lg"
         dismissible={!isPending}
         footer={
+          !canEdit ? (
+            <Button variant="secondary" onClick={handleClose}>
+              بستن
+            </Button>
+          ) : (
           <>
             <Button
               variant="dangerGhost"
@@ -217,6 +225,7 @@ export default function CardModal({ card, cardMutations, onClose }: Props) {
                   : 'ذخیره تغییرات'}
             </Button>
           </>
+          )
         }
       >
         <div className="flex flex-col gap-6">
@@ -264,6 +273,7 @@ export default function CardModal({ card, cardMutations, onClose }: Props) {
                 id={id}
                 aria-describedby={describedBy}
                 value={title}
+                readOnly={!canEdit}
                 invalid={invalid}
                 onChange={(event) => {
                   setTitle(event.target.value)
@@ -288,7 +298,7 @@ export default function CardModal({ card, cardMutations, onClose }: Props) {
                     title={label.name}
                     aria-label={`لیبل ${label.name}`}
                     aria-pressed={isActive}
-                    disabled={isPending}
+                    disabled={isPending || !canEdit}
                     onClick={() => handleLabelClick(label.key)}
                     className={[
                       // چیپ است، نه دکمهٔ گرد: `radius-full` فقط برای دایرهٔ
@@ -337,12 +347,13 @@ export default function CardModal({ card, cardMutations, onClose }: Props) {
                     aria-describedby={describedBy}
                     invalid={invalid}
                     type="date"
+                    disabled={!canEdit}
                     className="ps-9"
                     value={dueDate}
                     onChange={(event) => setDueDate(event.target.value)}
                   />
                 </div>
-                {dueDate && (
+                {dueDate && canEdit && (
                   <Button
                     variant="ghost"
                     size="sm"
@@ -362,6 +373,7 @@ export default function CardModal({ card, cardMutations, onClose }: Props) {
                 id={id}
                 aria-describedby={describedBy}
                 value={description}
+                readOnly={!canEdit}
                 onChange={(event) => setDescription(event.target.value)}
                 rows={6}
                 placeholder="جزئیات، معیار انجام‌شدن، لینک‌ها…"

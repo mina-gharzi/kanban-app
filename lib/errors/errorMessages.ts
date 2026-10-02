@@ -53,7 +53,11 @@ const AUTH_MESSAGES_BY_CODE: Record<
   },
   weak_password: {
     code: ERROR_CODES.VALIDATION,
-    userMessage: 'رمز عبور باید حداقل ۶ کاراکتر باشد.',
+    userMessage: 'رمز عبور به‌اندازه‌ی کافی قوی نیست؛ دست‌کم ۸ نویسه انتخاب کنید.',
+  },
+  same_password: {
+    code: ERROR_CODES.VALIDATION,
+    userMessage: 'رمز جدید باید با رمز فعلی متفاوت باشد.',
   },
   over_request_rate_limit: {
     code: ERROR_CODES.RATE_LIMIT,

@@ -2,6 +2,10 @@ export type Board = {
   id: string
   title: string
   created_at: string
+  /** مالک بورد (ستون دیتابیس) */
+  created_by?: string
+  /** نقش کاربر جاری؛ `getBoards` پر می‌کند. فقط برای نمایش رابط است، نه تصمیم امنیتی. */
+  role?: import('@/lib/sharing/roles').BoardRole
 }
 
 export type Column = {

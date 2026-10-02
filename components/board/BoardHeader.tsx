@@ -3,11 +3,17 @@
 import type { Board } from '@/lib/board/types'
 import type { RealtimeStatus } from '@/hooks/useBoardRealtime'
 import { boardColor, boardInitial } from '@/lib/board/boardColor'
+import { readableInk } from '@/lib/labelColors'
+import { ROLE_LABELS, type BoardRole } from '@/lib/sharing/roles'
+import Button from '@/components/ui/Button'
+import { UsersIcon } from '@/components/ui/icons'
 
 type Props = {
   board: Board | undefined
   cardCount: number
   realtimeStatus: RealtimeStatus
+  role: BoardRole
+  onShare: () => void
 }
 
 const STATUS_META: Record<
@@ -44,7 +50,7 @@ const STATUS_META: Record<
  * وضعیت بصری تنها با رنگ منتقل نمی‌شود: متن، `title` و `sr-only` هم دارد
  * (کاربران کوررنگ). نام بورد بالاترین سطح عنوان است: نقش `title` (§۴.۲).
  */
-export default function BoardHeader({ board, cardCount, realtimeStatus }: Props) {
+export default function BoardHeader({ board, cardCount, realtimeStatus, role, onShare }: Props) {
   const status = STATUS_META[realtimeStatus]
   const color = board ? boardColor(board.id) : undefined
 
@@ -61,7 +67,7 @@ export default function BoardHeader({ board, cardCount, realtimeStatus }: Props)
         <span
           aria-hidden
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface-2 text-sm font-semibold text-text shadow-xs"
-          style={color ? { backgroundColor: color } : undefined}
+          style={color ? { backgroundColor: color, color: readableInk(color) } : undefined}
         >
           {board ? boardInitial(board.title) : '…'}
         </span>
@@ -75,8 +81,18 @@ export default function BoardHeader({ board, cardCount, realtimeStatus }: Props)
           </p>
         </div>
 
+        <div className="ms-auto flex flex-wrap items-center gap-2">
+        {role !== 'owner' && (
+          <span className="rounded-full border border-border bg-surface px-2.5 py-1 text-meta text-text-2">
+            {ROLE_LABELS[role]}
+          </span>
+        )}
+        <Button variant="secondary" size="sm" onClick={onShare} disabled={!board}>
+          <UsersIcon size={15} />
+          {role === 'owner' ? 'اشتراک‌گذاری' : 'اعضا'}
+        </Button>
         <span
-          className={`ms-auto inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-meta transition-colors duration-300 ${status.pill}`}
+          className={`inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-meta transition-colors duration-300 ${status.pill}`}
           title={status.label}
         >
           <span aria-hidden="true" className="relative flex h-2 w-2">
@@ -88,6 +104,7 @@ export default function BoardHeader({ board, cardCount, realtimeStatus }: Props)
           <span className="sr-only">وضعیت ارتباط بلادرنگ: </span>
           {status.label}
         </span>
+        </div>
       </div>
     </div>
   )

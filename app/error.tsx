@@ -29,7 +29,7 @@ export default function AppErrorFallback({
       </span>
       <div className="space-y-1">
         <h1 className="text-sm font-medium text-text">مشکلی پیش آمده است</h1>
-        <p className="mx-auto max-w-sm text-[13px] leading-relaxed text-text-2">
+        <p className="mx-auto max-w-sm text-meta leading-relaxed text-text-2">
           خطایی در نمایش این صفحه رخ داد. می‌توانید دوباره تلاش کنید؛ اگر
           تکرار شد، صفحه را تازه‌سازی کنید.
         </p>
