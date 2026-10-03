@@ -203,7 +203,7 @@ export default function BoardsList() {
                   const color = boardColor(board.id);
                   return (
                     <li key={board.id}>
-                      <div className="group relative flex h-40 flex-col justify-between overflow-hidden rounded-2xl border border-border bg-surface p-4 shadow-xs transition-all duration-200 hover:-translate-y-1 hover:border-border-2 hover:shadow-md">
+                      <div className="group relative flex h-40 flex-col justify-between overflow-hidden rounded-2xl border border-border bg-surface p-4 shadow-xs transition-all duration-200 has-[a:focus-visible]:outline-2 has-[a:focus-visible]:outline-offset-2 has-[a:focus-visible]:outline-[rgb(var(--ring))] hover:-translate-y-1 hover:border-border-2 hover:shadow-md">
                         {/* نوار رنگی هویت بورد */}
                         <span
                           aria-hidden
@@ -213,7 +213,7 @@ export default function BoardsList() {
 
                         <Link
                           href={`/board/${board.id}`}
-                          className="flex min-w-0 items-start gap-3 rounded outline-none after:absolute after:inset-0 focus-visible:ring-2 focus-visible:ring-primary/40"
+                          className="flex min-w-0 items-start gap-3 rounded after:absolute after:inset-0 focus-visible:outline-none"
                         >
                           <span
                             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-semibold text-text"

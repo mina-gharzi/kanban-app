@@ -34,7 +34,7 @@ export default function Input({
         'focus:border-primary',
         invalid
           ? 'border-danger focus:border-danger'
-          : 'border-border hover:border-border-2',
+          : 'border-border-input hover:border-text-2',
         size === 'sm' ? 'h-9 px-2.5 text-meta' : 'h-10 px-3 text-body',
         leading ? 'pe-9' : '',
         trailing ? 'ps-9' : '',

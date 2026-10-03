@@ -25,7 +25,7 @@ export default function Textarea({
         'focus:border-primary',
         invalid
           ? 'border-danger focus:border-danger'
-          : 'border-border hover:border-border-2',
+          : 'border-border-input hover:border-text-2',
         'disabled:bg-surface-2 disabled:text-text-muted disabled:opacity-100',
         className,
       ]

@@ -35,7 +35,6 @@ export default function ThemeToggle() {
             onClick={() => setTheme(value)}
             className={[
               'flex h-7 w-7 items-center justify-center rounded-full transition-all duration-150',
-              'outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
               isActive
                 ? 'bg-surface text-text shadow-xs'
                 : 'text-text-muted hover:text-text',

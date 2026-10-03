@@ -105,7 +105,11 @@ export default function AppShell({ sidebar, headerMeta, children }: Props) {
           </>
         )}
 
-        <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="flex min-w-0 flex-1 flex-col overflow-hidden focus:outline-none"
+        >
           {children}
         </main>
       </div>

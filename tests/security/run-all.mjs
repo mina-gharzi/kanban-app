@@ -23,6 +23,7 @@ const SUITES = [
   '04-move-rpc.test.mjs',
   '05-card-constraints.test.mjs',
   '06-realtime.test.mjs',
+  '07-sharing-role-matrix.test.mjs',
 ]
 
 /** یک suite را اجرا می‌کند و {name, passed, failed, unverified} برمی‌گرداند. */

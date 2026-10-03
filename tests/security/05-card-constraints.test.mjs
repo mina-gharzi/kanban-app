@@ -60,34 +60,52 @@ await withScenario(async (ctx) => {
   await dropCard(nullTitle.rowsData?.[0]?.id)
 
   report.section('۲) ★ آیا title می‌تواند رشته‌ی خالی باشد؟')
+  // این بخش قبلاً انتظار داشت title="" *پذیرفته* شود و به همین دلیل FAIL می‌داد.
+  // انتظار قدیمی stale بود: migration مربوط به hardening، قید
+  //   check (char_length(title) between 1 and 120) not valid
+  // را روی boards/columns/cards اضافه کرده و دیتابیس live آن را اعمال کرده
+  // است. یعنی رشته‌ی خالی دیگر *نمی‌تواند* ذخیره شود.
+  //
+  // این خبر خوبی برای مسئله‌ی parser است: ناسازگاری
+  // readCardFields ('') در برابر readDraftFields (null) دیگر در حوزه‌ی cards
+  // اصلاً ممکن نیست، چون هیچ کارتی نمی‌تواند title خالی داشته باشد.
   const emptyTitle = await makeCard({ title: '' })
-  if (emptyTitle.ok && emptyTitle.rows === 1) {
-    const id = emptyTitle.rowsData[0].id
-    const back = await readBack(id)
-    report.check(
-      'INSERT با title="" پذیرفته می‌شود (پس دیتابیس خالی را اجازه می‌دهد)',
-      true,
-      'بدون خطا',
-      emptyTitle.toString(),
-      'اگر این رد می‌شد، ناسازگاری parser بی‌اهمیت بود'
-    )
-    report.record(
-      back?.title === '' ? STATUS.PASS : STATUS.FAIL,
-      'title="" دقیقاً به‌صورت "" برگردانده می‌شود',
-      'title=""',
-      JSON.stringify(back?.title),
-      'پایه‌ی تصمیم درباره‌ی ناسازگاری readCardFields/readDraftFields'
-    )
-    await dropCard(id)
-  } else {
-    report.check(
-      'INSERT با title="" پذیرفته می‌شود',
-      false,
-      'بدون خطا',
-      emptyTitle.toString(),
-      'دیتابیس رشته‌ی خالی را رد می‌کند ⇒ ناسازگاری parser بی‌اثر است'
-    )
-  }
+  report.check(
+    'INSERT با title="" در دیتابیس رد می‌شود (قید cards_title_len)',
+    emptyTitle.status >= 400,
+    'status>=400 (23514 check violation)',
+    emptyTitle.toString(),
+    emptyTitle.code === '23514'
+      ? 'قید چک دیتابیس جلوی رشته‌ی خالی را گرفت ⇒ ناسازگاری parser در cards بی‌اثر است'
+      : 'اگر با کد دیگری رد شده، بررسی کنید که آیا علت همان قید است یا چیز دیگر'
+  )
+
+  // مرزهای قید: ۱ کاراکتر باید بپذیرد و ۱۲۱ باید رد شود.
+  const minTitle = await makeCard({ title: 'x' })
+  report.check(
+    'title با طول ۱ پذیرفته می‌شود (کران پایین قید)',
+    minTitle.ok && minTitle.rows === 1,
+    'status=2xx rows=1',
+    minTitle.toString()
+  )
+  await dropCard(minTitle.rowsData?.[0]?.id)
+
+  const maxTitle = await makeCard({ title: 'x'.repeat(120) })
+  report.check(
+    'title با طول ۱۲۰ پذیرفته می‌شود (کران بالای قید)',
+    maxTitle.ok && maxTitle.rows === 1,
+    'status=2xx rows=1',
+    maxTitle.toString()
+  )
+  await dropCard(maxTitle.rowsData?.[0]?.id)
+
+  const overTitle = await makeCard({ title: 'x'.repeat(121) })
+  report.check(
+    'title با طول ۱۲۱ رد می‌شود',
+    overTitle.status >= 400,
+    'status>=400',
+    overTitle.toString()
+  )
 
   report.section('۳) ★ رفتار description (مهم‌ترین بخش برای تصمیم parser)')
   const emptyDesc = await makeCard({ title: 't', description: '' })

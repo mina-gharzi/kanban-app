@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import ErrorState from '@/components/ErrorState'
 import { useBoard } from '@/hooks/useBoard'
@@ -54,6 +54,11 @@ export default function Board({ boardId }: Props) {
     : null
 
   const board = boards.find((item) => item.id === boardId)
+  // عنوان تب = نام واقعی بورد (قبل از لود، همان «بورد» از layout می‌ماند)
+  useEffect(() => {
+    if (board?.title) document.title = `${board.title} · کانبان`
+  }, [board?.title])
+
   // نقش فقط برای رابط است (RLS مرجع است)؛ تا آمدن فهرست، محتاط‌ترین حالت: فقط‌خواندنی
   const permissions = permissionsFor(board?.role ?? 'viewer')
 

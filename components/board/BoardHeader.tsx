@@ -94,6 +94,7 @@ export default function BoardHeader({ board, cardCount, realtimeStatus, role, on
         <span
           className={`inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-meta transition-colors duration-300 ${status.pill}`}
           title={status.label}
+          role="status"
         >
           <span aria-hidden="true" className="relative flex h-2 w-2">
             {status.ping && (

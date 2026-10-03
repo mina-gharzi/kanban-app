@@ -13,7 +13,7 @@
  */
 
 import { Report, STATUS, uuid } from './helpers/harness.mjs'
-import { withScenario } from './helpers/scenario.mjs'
+import { withScenario, gated } from './helpers/scenario.mjs'
 
 const report = new Report('۰۴ — RPCهای move_cards و move_columns')
 
@@ -109,7 +109,6 @@ await withScenario(async (ctx) => {
   const cases = [
     ['شناسه ناموجود', [{ id: uuid(), column_id: col1.id, position: 0 }]],
     ['مقصد ناموجود', [{ id: card1.id, column_id: uuid(), position: 0 }]],
-    ['position اعشاری (2.5)', [{ id: card1.id, column_id: col1.id, position: 2.5 }]],
     ['position به‌صورت رشته', [{ id: card1.id, column_id: col1.id, position: '4' }]],
     ['id نامعتبر (غیر uuid)', [{ id: 'not-a-uuid', column_id: col1.id, position: 0 }]],
     [
@@ -127,6 +126,44 @@ await withScenario(async (ctx) => {
     const r = await rpc(restA, 'move_cards', payload)
     report.check(`move_cards رد می‌کند: ${name}`, r.status >= 400, 'status>=400', r.toString())
   }
+
+  report.section('۴ب) position اعشاری باید *پذیرفته* و بدون گرد شدن ذخیره شود')
+  // این مورد قبلاً در فهرست «باید رد شود» بود و FAIL می‌داد، ولی انتظار اشتباه
+  // بود: migration مربوط به fractional indexing، ستون position را
+  // `double precision` می‌کند و کل الگوریتم جای‌جایی در lib/board/layout.ts
+  // روی position اعشاری تکیه دارد. پس رد کردن 2.5 نه‌تنها لازم نیست، بلکه
+  // خلاف طراحی است.
+  //
+  // نکته‌ی امنیتی/درستی که اینجا واقعاً سنجیده می‌شود: اگر ستون در دیتابیس
+  // `int4` مانده بود، `2.5::int4` بی‌صدا گرد می‌شد (بدون خطا) و دو کارتِ
+  // با position نزدیک به هم به یک عدد می‌افتادند — داده‌ی ناسازگار، بی‌صدا.
+  // پس assertions این بخش «۲.۵ دقیقاً ۲.۵ می‌ماند» را می‌سنجد، نه فقط 204.
+  const fracMove = await rpc(restA, 'move_cards', [
+    { id: card1.id, column_id: col1.id, position: 2.5 },
+  ])
+  gated(
+    report,
+    ctx,
+    fracMove.status === 204 || fracMove.status === 200,
+    'move_cards position اعشاری را می‌پذیرد',
+    'status=204',
+    fracMove.toString()
+  )
+  const fracRead = await restA.get(
+    `/rest/v1/cards?id=eq.${card1.id}&select=id,position`
+  )
+  const fracValue = Number(fracRead.rowsData?.[0]?.position)
+  gated(
+    report,
+    ctx,
+    fracValue === 2.5,
+    'position اعشاری دقیقاً ذخیره می‌شود (گرد نمی‌شود ⇒ ستون double precision است)',
+    'position === 2.5',
+    `position=${fracRead.rowsData?.[0]?.position}`,
+    'اگر 2 یا 3 شد یعنی ستون در دیتابیس live هنوز int4 است و fractional indexing روی آن کار نمی‌کند'
+  )
+  // بازگرداندن به حالت اول
+  await rpc(restA, 'move_cards', [{ id: card1.id, column_id: col1.id, position: 0 }])
 
   report.section('۵) move_columns')
   const okColMove = await rpc(restA, 'move_columns', [

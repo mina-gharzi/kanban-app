@@ -98,6 +98,7 @@
 
   --border: 190 201 216; /* #BEC9D8  1.67:1 روی کارت */
   --border-2: 154 168 188; /* #9AA8BC  2.40:1 روی کارت */
+  --border-input: 120 133 153; /* #788599  3.72:1 روی کارت؛ مرز فیلدها (WCAG 1.4.11 ≥ 3:1) */
 
   /* --- سه پلهٔ متن، با فاصلهٔ روشن از هم --- */
   --text: 15 20 28; /* #0F141C  18.37:1 روی کارت */
@@ -165,10 +166,11 @@
 
   --border: 61 76 96; /* #3D4C60  1.53:1 روی کارت */
   --border-2: 90 108 130; /* #5A6C82  2.49:1 روی کارت */
+  --border-input: 112 125 145; /* #707D91  3.21:1 روی کارت؛ مرز فیلدها (WCAG 1.4.11 ≥ 3:1) */
 
   --text: 233 238 246; /* #E9EEF6  11.50:1 روی کارت */
   --text-2: 179 190 206; /* #B3BECE  7.13:1 روی کارت */
-  --text-muted: 138 151 171; /* #8A97AB  4.53:1 روی کارت */
+  --text-muted: 156 166 182; /* #9CA6B6  4.72:1 روی surface-2، 5.45:1 روی کارت (قبلاً 3.92 روی surface-2) */
 
   --primary: 63 192 204; /* #3FC0CC  6.14:1 روی کارت */
   --primary-hover: 99 210 219; /* #63D2DB */
@@ -205,6 +207,7 @@
   --color-surface-3: rgb(var(--surface-3));
   --color-border: rgb(var(--border));
   --color-border-2: rgb(var(--border-2));
+  --color-border-input: rgb(var(--border-input));
   --color-text: rgb(var(--text));
   --color-text-2: rgb(var(--text-2));
   --color-text-muted: rgb(var(--text-muted));

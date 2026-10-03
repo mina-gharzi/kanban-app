@@ -78,7 +78,7 @@ export default function UserMenu() {
           // `label` روی خودِ منو می‌نشیند، نه روی محرک؛ بدون این aria-label دکمه
           // هیچ نامی نداشت و screen reader صرفاً «button» می‌خواند.
           aria-label="منوی کاربر"
-          className="group flex items-center gap-1 rounded-full p-0.5 pe-1.5 outline-none transition-colors hover:bg-surface-2 focus-visible:ring-2 focus-visible:ring-primary/40"
+          className="group flex items-center gap-1 rounded-full p-0.5 pe-1.5 transition-colors hover:bg-surface-2"
         >
           {avatar('sm')}
           <ChevronDownIcon

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import Script from 'next/script'
 import './globals.css'
+import SkipLink from '@/components/SkipLink'
 import ToastContainer from '@/components/ToastContainer'
 import { ThemeProvider } from '@/components/layout/ThemeProvider'
 import { Providers } from './providers'
@@ -73,6 +74,7 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="min-h-dvh bg-bg text-text antialiased">
+        <SkipLink />
         {PinarPreloads.map((href) => (
           <link
             key={href}

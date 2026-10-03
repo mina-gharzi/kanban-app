@@ -74,7 +74,7 @@ export default function LandingPage() {
   return (
     <div id="بالا" className="min-h-dvh overflow-x-hidden bg-bg text-text">
       <SiteHeader />
-      <main>
+      <main id="main-content" tabIndex={-1} className="focus:outline-none">
         <Hero />
         <ChaosToOrder />
         <Process />

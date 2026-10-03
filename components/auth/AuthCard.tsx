@@ -25,7 +25,11 @@ export default function AuthCard({
   footerLink,
 }: Props) {
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center gap-8 bg-bg p-4">
+    <main
+      id="main-content"
+      tabIndex={-1}
+      className="flex min-h-dvh flex-col items-center justify-center gap-8 bg-bg p-4 focus:outline-none"
+    >
       <div className="flex items-center gap-2 text-text">
         {/* شعاع برند با AppHeader یکی است: هر دو `radius-md` */}
         <span className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-on-primary">
@@ -52,6 +56,6 @@ export default function AuthCard({
           </Link>
         </p>
       </div>
-    </div>
+    </main>
   )
 }

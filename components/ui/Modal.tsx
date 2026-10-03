@@ -97,7 +97,9 @@ export default function Modal({
           .filter(Boolean)
           .join(' ')}
       >
-        <header className="flex items-start justify-between gap-3 border-b border-border px-5 py-4">
+        {/* `div` نه `header`/`footer`: داخل dialog هر کدام یک landmark «banner/contentinfo»
+            تکراری می‌ساخت (axe: landmark-no-duplicate-banner) و screen reader را شلوغ می‌کرد */}
+        <div className="flex items-start justify-between gap-3 border-b border-border px-5 py-4">
           <div className="min-w-0">
             <h2 id={titleId} className="text-heading font-semibold text-text">
               {title}
@@ -117,7 +119,7 @@ export default function Modal({
           >
             <XIcon size={17} />
           </IconButton>
-        </header>
+        </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">{children}</div>
 
@@ -126,9 +128,9 @@ export default function Modal({
           // `border-t` انجام می‌شود. `surface-2` در این سیستم معنای
           // «بدنهٔ ستون» دارد و استفاده از آن اینجا یک نوار خاکستریِ
           // بی‌معنا داخل مودال می‌ساخت (الگوی «هر چیز یک کارت»).
-          <footer className="flex items-center justify-end gap-2 border-t border-border bg-surface px-5 py-3.5">
+          <div className="flex items-center justify-end gap-2 border-t border-border bg-surface px-5 py-3.5">
             {footer}
-          </footer>
+          </div>
         )}
       </div>
 

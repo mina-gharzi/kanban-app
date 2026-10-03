@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useBoardSharing } from '@/hooks/useSharing'
+import { buildInviteMessage } from '@/lib/sharing/messages'
 import { ROLE_DESCRIPTIONS, ROLE_LABELS, type InviteRole } from '@/lib/sharing/roles'
 import { useToastStore } from '@/store/toastStore'
 import Button from '@/components/ui/Button'
@@ -22,7 +23,7 @@ type Props = {
 }
 
 const SELECT_CLASS =
-  'h-9 rounded-md border border-border bg-surface px-2 text-meta text-text hover:border-border-2 focus:border-primary disabled:opacity-60'
+  'h-9 rounded-md border border-border-input bg-surface px-2 text-meta text-text hover:border-text-2 focus:border-primary disabled:opacity-60'
 
 export default function ShareBoardDialog({
   boardId, boardTitle, isOwner, currentUserId, currentUserEmail, onClose, onLeft,
@@ -35,6 +36,22 @@ export default function ShareBoardDialog({
   const [pendingRemove, setPendingRemove] = useState<{ userId: string; email: string } | null>(null)
   const [isConfirmingLeave, setIsConfirmingLeave] = useState(false)
 
+  async function copyInviteMessage(inviteEmail: string, inviteRole: InviteRole) {
+    const text = buildInviteMessage({
+      boardTitle,
+      email: inviteEmail,
+      role: inviteRole,
+      origin: window.location.origin,
+    })
+    try {
+      await navigator.clipboard.writeText(text)
+      addToast('پیام دعوت کپی شد؛ برای او بفرستید.', 'success')
+    } catch {
+      // clipboard در برخی مرورگرها/زمینه‌های ناامن در دسترس نیست
+      addToast('کپی نشد. دسترسی به کلیپ‌بورد مسدود است.', 'error')
+    }
+  }
+
   function handleInvite(event: React.FormEvent) {
     event.preventDefault()
     const clean = email.trim()
@@ -43,7 +60,7 @@ export default function ShareBoardDialog({
       { email: clean, role },
       {
         onSuccess: () => {
-          addToast(`دعوت برای ${clean.toLowerCase()} ثبت شد.`, 'success')
+          addToast(`دعوت ثبت شد، اما ایمیلی ارسال نمی‌شود؛ خودتان خبرش کنید («کپی پیام دعوت»).`, 'success')
           setEmail('')
         },
       }
@@ -172,12 +189,18 @@ export default function ShareBoardDialog({
           {isOwner && sharing.sentInvites.length > 0 && (
             <section aria-label="دعوت‌های در انتظار" className="flex flex-col gap-2">
               <h3 className="text-meta font-semibold text-text-2">دعوت‌های در انتظار پذیرش</h3>
+              <p className="text-chip leading-5 text-text-muted">
+                ایمیلی برای این افراد ارسال نشده. «کپی پیام دعوت» را بزنید و خودتان برایشان بفرستید.
+              </p>
               <ul className="divide-y divide-border rounded-lg border border-border">
                 {sharing.sentInvites.map((invite) => (
                   <li key={invite.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
                     <span className="min-w-0 truncate text-body text-text" dir="ltr">{invite.email}</span>
                     <span className="flex shrink-0 items-center gap-2">
                       <span className="rounded-sm bg-surface-2 px-2 py-1 text-chip text-text-2">{ROLE_LABELS[invite.role]}</span>
+                      <Button variant="secondary" size="sm" onClick={() => void copyInviteMessage(invite.email, invite.role)}>
+                        کپی پیام دعوت
+                      </Button>
                       <Button variant="ghost" size="sm" onClick={() => sharing.revokeInvite(invite.id)}>
                         لغو
                       </Button>
