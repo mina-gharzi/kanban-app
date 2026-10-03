@@ -89,7 +89,9 @@ export async function getBoardData(boardId: string): Promise<BoardData> {
       if (error) throw normalizeError(error)
       const page = (data ?? []) as Array<Card & { columns?: unknown }>
       for (const row of page) {
-        const { columns: _joined, ...card } = row
+        // `columns!inner(...)` فقط برای فیلتر join است؛ از خود کارت حذفش می‌کنیم
+        const card = { ...row }
+        delete card.columns
         all.push(card as Card)
       }
       if (page.length < PAGE_SIZE) return all

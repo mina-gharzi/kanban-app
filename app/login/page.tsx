@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useAuthMutations } from '@/hooks/useAuthMutations'
@@ -16,13 +16,15 @@ export default function LoginPage() {
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [linkError, setLinkError] = useState(false)
-
-  // /auth/callback با `?error=link` برمی‌گرداند. در useEffect خوانده می‌شود تا
-  // صفحه‌ی ورود استاتیک بماند و hydration ناسازگار نشود.
-  useEffect(() => {
-    setLinkError(new URLSearchParams(window.location.search).get('error') === 'link')
-  }, [])
+  // /auth/callback با `?error=link` برمی‌گرداند. با useSyncExternalStore خوانده
+  // می‌شود (نه setState داخل useEffect): سرور و اولین رندر کلاینت `false` می‌بینند،
+  // پس صفحه‌ی ورود استاتیک می‌ماند و hydration ناسازگار نمی‌شود؛ بعد از hydration
+  // مقدار واقعی جایگزین می‌شود. رشته‌ی query بدون ناوبری عوض نمی‌شود، پس subscribe لازم نیست.
+  const linkError = useSyncExternalStore(
+    () => () => {},
+    () => new URLSearchParams(window.location.search).get('error') === 'link',
+    () => false,
+  )
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault()

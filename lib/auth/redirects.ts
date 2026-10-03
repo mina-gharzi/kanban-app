@@ -17,6 +17,15 @@ export function isProtectedPath(pathname: string): boolean {
   )
 }
 
+/** کاراکتر کنترلی (۰–۳۱) یا بک‌اسلش؛ بدون regex تا قاعده‌ی no-control-regex ساکت بماند */
+function hasControlOrBackslash(value: string): boolean {
+  for (let i = 0; i < value.length; i += 1) {
+    const code = value.charCodeAt(i)
+    if (code <= 0x1f || code === 0x5c) return true
+  }
+  return false
+}
+
 /**
  * پارامتر `next` را فقط وقتی می‌پذیرد که یک مسیر داخلیِ همین سایت باشد.
  * بدون این، `/login?next=https://evil.com` بعد از ورود کاربر را به سایت
@@ -29,7 +38,7 @@ export function safeNextPath(
 ): string {
   if (!raw || raw.length > 2048) return fallback
   if (!raw.startsWith('/') || raw.startsWith('//')) return fallback
-  if (/[\u0000-\u001f\\]/.test(raw)) return fallback
+  if (hasControlOrBackslash(raw)) return fallback
 
   try {
     const parsed = new URL(raw, 'http://internal.invalid')
