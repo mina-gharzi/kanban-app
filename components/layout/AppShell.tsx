@@ -61,7 +61,7 @@ export default function AppShell({ sidebar, headerMeta, children }: Props) {
   const closeNav = () => setIsNavOpen(false)
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden bg-bg">
+    <div className="flex h-dvh flex-col overflow-hidden bg-bg short:h-auto short:min-h-dvh short:overflow-visible">
       <AppHeader
         onToggleNav={
           sidebar ? () => setIsNavOpen((open) => !open) : undefined
@@ -108,7 +108,7 @@ export default function AppShell({ sidebar, headerMeta, children }: Props) {
         <main
           id="main-content"
           tabIndex={-1}
-          className="flex min-w-0 flex-1 flex-col overflow-hidden focus:outline-none"
+          className="flex min-w-0 flex-1 flex-col overflow-hidden focus:outline-none short:overflow-visible"
         >
           {children}
         </main>

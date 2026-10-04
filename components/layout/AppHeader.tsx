@@ -56,7 +56,7 @@ export default function AppHeader({
         </Link>
 
         {meta && (
-          <div className="flex min-w-0 flex-1 items-center gap-2 border-s border-border ps-3 text-meta text-text-2">
+          <div className="hidden min-w-0 flex-1 items-center gap-2 border-s border-border ps-3 text-meta text-text-2 sm:flex">
             {meta}
           </div>
         )}

@@ -162,7 +162,7 @@ export default function BoardContent({
             `min-h-full` + `items-stretch` قد ستون‌ها را یکسان نگه می‌دارد
             (بدنه‌ی ستون یک «ظرف» است، DESIGN_PLAN.md §۵.۳) و ستونِ بلندتر از
             صفحه، اسکرول عمودی همین ناحیه را بزرگ می‌کند. */}
-        <div className="relative min-h-0 flex-1 overflow-x-auto overscroll-x-contain px-4 pb-5 pt-3 sm:px-6">
+        <div className="relative min-h-0 flex-1 overflow-x-auto overscroll-x-contain px-4 pb-5 pt-3 short:min-h-[24rem] sm:px-6">
           <div className="flex min-h-full items-stretch gap-4 sm:gap-6">
             <SortableContext items={columnIds} strategy={horizontalListSortingStrategy}>
               {columns.map((column) => (

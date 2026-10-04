@@ -33,7 +33,7 @@ export default function BoardFilters({
 }: Props) {
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <div className="relative min-w-0 flex-1 sm:max-w-64">
+      <div className="relative w-full min-w-0 sm:w-auto sm:flex-1 sm:max-w-64">
         <Input
           size="sm"
           type="search"

@@ -88,13 +88,13 @@ export default function ColumnHeader({
 
   return (
     <div className="flex items-center gap-1.5 px-3 pb-2 pt-3">
-      {!isPending && canEdit && (
+      {!isPending && (
         <button
           type="button"
           {...dragHandleProps}
           title="جابه‌جایی ستون"
           aria-label={`جابه‌جایی ستون ${column.title}`}
-          className="cursor-grab touch-none rounded-sm p-1 text-text-muted transition-colors duration-150 ease-out-soft hover:bg-surface-2 hover:text-text-2 active:cursor-grabbing"
+          className="cursor-grab touch-none rounded-sm p-1.5 text-text-muted transition-colors duration-150 ease-out-soft hover:bg-surface-2 hover:text-text-2 active:cursor-grabbing"
         >
           <GripIcon size={15} />
         </button>

@@ -126,7 +126,7 @@ function SiteHeader() {
 function Hero() {
   return (
     <section className="px-3 pb-16 pt-10 sm:px-6 sm:pb-24 sm:pt-16">
-      <div className="mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-[1fr_1.15fr] lg:gap-14">
+      <div className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)] items-center gap-12 lg:grid-cols-[1fr_1.15fr] lg:gap-14">
         <div>
           <div className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1.5 text-chip font-medium text-text-2">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-success" />
@@ -376,13 +376,13 @@ function SiteFooter() {
           کانبان
         </span>
         <div className="flex flex-wrap gap-x-5 text-meta text-text-2">
-          <Link href="/login" className="py-2 hover:text-text">
+          <Link href="/login" className="inline-flex min-h-10 min-w-10 items-center justify-center px-1 hover:text-text">
             ورود
           </Link>
-          <Link href="/register" className="py-2 hover:text-text">
+          <Link href="/register" className="inline-flex min-h-10 min-w-10 items-center justify-center px-1 hover:text-text">
             ثبت‌نام
           </Link>
-          <a href="#بالا" className="py-2 hover:text-text">
+          <a href="#بالا" className="inline-flex min-h-10 min-w-10 items-center justify-center px-1 hover:text-text">
             بازگشت به بالا
           </a>
         </div>

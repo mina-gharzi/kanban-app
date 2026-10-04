@@ -92,7 +92,7 @@ export default function ShareBoardDialog({
             <form onSubmit={handleInvite} className="flex flex-col gap-3">
               <Field id="invite-email" label="دعوت با ایمیل">
                 {({ id, describedBy }) => (
-                  <div className="flex flex-col gap-2 sm:flex-row">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                     <Input
                       id={id}
                       aria-describedby={describedBy}
@@ -102,13 +102,13 @@ export default function ShareBoardDialog({
                       value={email}
                       onChange={(event) => setEmail(event.target.value)}
                       placeholder="name@example.com"
-                      className="flex-1"
+                      className="sm:flex-1"
                     />
                     <select
                       aria-label="نقش"
                       value={role}
                       onChange={(event) => setRole(event.target.value as InviteRole)}
-                      className={`${SELECT_CLASS} sm:h-10`}
+                      className={`${SELECT_CLASS} h-10`}
                     >
                       <option value="editor">{ROLE_LABELS.editor}</option>
                       <option value="viewer">{ROLE_LABELS.viewer}</option>
@@ -140,12 +140,12 @@ export default function ShareBoardDialog({
               {sharing.members.map((member) => {
                 const isMe = member.user_id === currentUserId
                 return (
-                  <li key={member.user_id} className="flex items-center justify-between gap-3 px-3 py-2.5">
+                  <li key={member.user_id} className="flex flex-col gap-2 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                     <span className="min-w-0 truncate text-body text-text" dir="auto">
                       {member.email}
                       {isMe && <span className="ms-1.5 text-chip text-text-muted">(شما)</span>}
                     </span>
-                    <span className="flex shrink-0 items-center gap-2">
+                    <span className="flex shrink-0 items-center justify-between gap-2 sm:justify-end">
                       {isOwner ? (
                         <>
                           <select
@@ -194,9 +194,9 @@ export default function ShareBoardDialog({
               </p>
               <ul className="divide-y divide-border rounded-lg border border-border">
                 {sharing.sentInvites.map((invite) => (
-                  <li key={invite.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
+                  <li key={invite.id} className="flex flex-col gap-2 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                     <span className="min-w-0 truncate text-body text-text" dir="ltr">{invite.email}</span>
-                    <span className="flex shrink-0 items-center gap-2">
+                    <span className="flex shrink-0 flex-wrap items-center gap-2">
                       <span className="rounded-sm bg-surface-2 px-2 py-1 text-chip text-text-2">{ROLE_LABELS[invite.role]}</span>
                       <Button variant="secondary" size="sm" onClick={() => void copyInviteMessage(invite.email, invite.role)}>
                         کپی پیام دعوت

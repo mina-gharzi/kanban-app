@@ -198,6 +198,12 @@
 
 /* حالت تاریک با کلاس (برای Toggle دستی) */
 @custom-variant dark (&:where(.dark, .dark *));
+/*
+ * viewport کوتاه (بزرگ‌نمایی ۲۰۰٪–۴۰۰٪، گوشی در حالت افقی): سربرگ و فیلتر نباید کل
+ * ارتفاع را بخورند. در این حالت شِل از «ارتفاع ثابت» به «صفحه‌ی قابل‌اسکرول» می‌رود
+ * (WCAG 1.4.10 Reflow). استفاده: `short:h-auto`.
+ */
+@custom-variant short (@media (max-height: 520px));
 
 /* --- نگاشت توکن‌ها به ابزارهای Tailwind --- */
 @theme inline {

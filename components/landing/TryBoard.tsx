@@ -29,7 +29,7 @@ export default function TryBoard() {
   const progress = Math.round((done / cards.length) * 100);
 
   return (
-    <div className="relative">
+    <div className="relative min-w-0">
       {/* sticky-note hint */}
       <div
         aria-hidden="true"
