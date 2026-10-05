@@ -12,8 +12,10 @@ export function isProtectedPath(pathname: string): boolean {
   return (
     pathname === '/board' ||
     pathname === '/boards' ||
+    pathname === '/account' ||
     pathname.startsWith('/board/') ||
-    pathname.startsWith('/boards/')
+    pathname.startsWith('/boards/') ||
+    pathname.startsWith('/account/')
   )
 }
 

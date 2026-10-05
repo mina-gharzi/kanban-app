@@ -6,7 +6,7 @@ import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { boardColor } from '@/lib/board/boardColor'
 import { readableInk } from '@/lib/labelColors'
 import Dropdown, { type MenuItem } from '@/components/ui/Dropdown'
-import { BoardsIcon, ChevronDownIcon, LogOutIcon } from '@/components/ui/icons'
+import { BoardsIcon, ChevronDownIcon, LogOutIcon, UserIcon } from '@/components/ui/icons'
 
 /** اولین نویسه‌ی بخش محلی ایمیل؛ ایمیل خالی ⇒ علامت سؤال */
 function initialsOf(email: string): string {
@@ -47,6 +47,11 @@ export default function UserMenu() {
       label: 'بوردهای من',
       icon: <BoardsIcon size={16} />,
       onSelect: () => router.push('/boards'),
+    },
+    {
+      label: 'حساب کاربری',
+      icon: <UserIcon size={16} />,
+      onSelect: () => router.push('/account'),
     },
     {
       label: 'خروج از حساب',

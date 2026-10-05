@@ -16,11 +16,15 @@ function callbackUrl(next?: string): string {
  * است (کاربر باید لینک ایمیل را بزند)؛ اگر خاموش باشد نشست همین‌جا ساخته شده.
  * فراخوان‌کننده بر پایه‌ی `data.session` مسیر را انتخاب می‌کند.
  */
-export async function signUp(email: string, password: string) {
+export async function signUp(email: string, password: string, termsVersion: string) {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { emailRedirectTo: callbackUrl() },
+    options: {
+      emailRedirectTo: callbackUrl(),
+      // مدرک پذیرش قوانین: زمان و نسخه‌ای که کاربر هنگام ثبت‌نام پذیرفته
+      data: { accepted_terms_at: new Date().toISOString(), terms_version: termsVersion },
+    },
   })
   if (error) throw normalizeError(error)
   return data

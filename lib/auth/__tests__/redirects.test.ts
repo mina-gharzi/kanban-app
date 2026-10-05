@@ -31,8 +31,8 @@ describe('safeNextPath', () => {
 
 describe('isProtectedPath', () => {
   it('covers the board routes only', () => {
-    for (const p of ['/board', '/boards', '/board/123', '/boards/x']) expect(isProtectedPath(p), p).toBe(true)
-    for (const p of ['/', '/login', '/register', '/boardgames', '/boarding']) expect(isProtectedPath(p), p).toBe(false)
+    for (const p of ['/board', '/boards', '/board/123', '/boards/x', '/account', '/account/x']) expect(isProtectedPath(p), p).toBe(true)
+    for (const p of ['/', '/login', '/register', '/privacy', '/terms', '/boardgames', '/boarding', '/accounting']) expect(isProtectedPath(p), p).toBe(false)
   })
 })
 

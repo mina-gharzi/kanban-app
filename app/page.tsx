@@ -382,6 +382,8 @@ function SiteFooter() {
           <Link href="/register" className="inline-flex min-h-10 min-w-10 items-center justify-center px-1 hover:text-text">
             ثبت‌نام
           </Link>
+          <Link href="/privacy" className="inline-flex min-h-10 min-w-10 items-center justify-center px-1 hover:text-text">حریم خصوصی</Link>
+          <Link href="/terms" className="inline-flex min-h-10 min-w-10 items-center justify-center px-1 hover:text-text">قوانین</Link>
           <a href="#بالا" className="inline-flex min-h-10 min-w-10 items-center justify-center px-1 hover:text-text">
             بازگشت به بالا
           </a>

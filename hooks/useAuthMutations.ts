@@ -29,8 +29,8 @@ export function useAuthMutations() {
   })
 
   const signUpMutation = useMutation({
-    mutationFn: ({ email, password }: { email: string; password: string }) =>
-      signUp(email, password),
+    mutationFn: ({ email, password, termsVersion }: { email: string; password: string; termsVersion: string }) =>
+      signUp(email, password, termsVersion),
     // بدون «تأیید ایمیل» نشست همین‌جا ساخته می‌شود؛ مثل ورود کش خصوصی پاک شود
     onSuccess: (data) => {
       if (data.session) clearPrivateCache()

@@ -1,10 +1,12 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useAuthMutations } from '@/hooks/useAuthMutations'
 import { useCooldown } from '@/hooks/useCooldown'
 import { MIN_PASSWORD_LENGTH, validateNewPassword } from '@/lib/auth/password'
+import { LEGAL } from '@/lib/legal/config'
 import { useToastStore } from '@/store/toastStore'
 import AuthCard from '@/components/auth/AuthCard'
 import Button from '@/components/ui/Button'
@@ -36,7 +38,7 @@ export default function RegisterPage() {
 
     const cleanEmail = email.trim()
     signUp(
-      { email: cleanEmail, password },
+      { email: cleanEmail, password, termsVersion: LEGAL.termsVersion },
       {
         onSuccess: (data) => {
           // «تأیید ایمیل» خاموش: نشست همین‌جا ساخته شده، مستقیم به بوردها
@@ -152,6 +154,20 @@ export default function RegisterPage() {
             />
           )}
         </Field>
+
+        <label className="flex cursor-pointer items-start gap-2.5 text-meta leading-6 text-text-2">
+          <input type="checkbox" required className="mt-0.5 h-5 w-5 shrink-0 accent-[rgb(var(--primary))]" />
+          <span>
+            <Link href="/terms" target="_blank" rel="noopener" className="font-medium text-primary underline underline-offset-4">
+              قوانین استفاده<span className="sr-only"> (در تب جدید)</span>
+            </Link>{' '}
+            و{' '}
+            <Link href="/privacy" target="_blank" rel="noopener" className="font-medium text-primary underline underline-offset-4">
+              سیاست حریم خصوصی<span className="sr-only"> (در تب جدید)</span>
+            </Link>{' '}
+            را خوانده‌ام و می‌پذیرم.
+          </span>
+        </label>
 
         <Button type="submit" fullWidth loading={isSigningUp} className="mt-1">
           {isSigningUp ? 'در حال ثبت‌نام…' : 'ثبت‌نام'}

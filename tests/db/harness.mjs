@@ -1,6 +1,7 @@
 // Test harness: a real Postgres (PGlite/WASM) with a minimal Supabase stub
 // (auth schema, roles, publication) and the baseline schema as seen in production.
 import { PGlite } from '@electric-sql/pglite'
+import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto'
 import { readFileSync, readdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
@@ -11,7 +12,9 @@ export const MIGRATIONS_DIR = path.join(root, 'supabase/migrations')
 const STUB = `
 create role anon nologin; create role authenticated nologin; create role service_role nologin bypassrls;
 create schema auth;
-create table auth.users (id uuid primary key default gen_random_uuid(), email text unique, email_confirmed_at timestamptz);
+create schema extensions;
+create extension pgcrypto with schema extensions;
+create table auth.users (id uuid primary key default gen_random_uuid(), email text unique, email_confirmed_at timestamptz, encrypted_password text);
 create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
 create function auth.jwt() returns jsonb language sql stable as $$
   select jsonb_build_object('sub', current_setting('request.jwt.claim.sub', true), 'email', current_setting('request.jwt.claim.email', true)) $$;
@@ -35,7 +38,7 @@ grant all on all tables in schema public to anon, authenticated, service_role;
 `
 
 export async function createDb({ upTo = '99999999999999' } = {}) {
-  const db = new PGlite()
+  const db = new PGlite({ extensions: { pgcrypto } })
   await db.exec(STUB)
   const files = readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith('.sql')).sort()
   for (const f of files) {
