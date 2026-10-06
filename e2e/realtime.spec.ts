@@ -1,6 +1,14 @@
-import { test, expect, type Page } from '@playwright/test'
-import { createTestUser, userRest } from './helpers/users'
-import { login, createBoard, addColumn, addCard, column, card, waitForHydration } from './helpers/app'
+import { test, expect, type Page } from "@playwright/test";
+import { createTestUser, userRest } from "./helpers/users";
+import {
+  login,
+  createBoard,
+  addColumn,
+  addCard,
+  column,
+  card,
+  waitForHydration,
+} from "./helpers/app";
 
 /**
  * Realtime — دو کاربر، دو مرورگر، یک بورد.
@@ -23,59 +31,60 @@ import { login, createBoard, addColumn, addCard, column, card, waitForHydration 
  */
 
 async function waitForColumn(p: Page, title: string) {
-  await expect(column(p, title)).toBeVisible({ timeout: 30_000 })
+  await expect(column(p, title)).toBeVisible({ timeout: 30_000 });
 }
 
-test.describe('Realtime', () => {
-  test('کارت ساخته‌شده توسط کاربر دوم بدون reload در صفحه‌ی اول ظاهر می‌شود', async ({
+test.describe("Realtime", () => {
+  test("کارت ساخته‌شده توسط کاربر دوم بدون reload در صفحه‌ی اول ظاهر می‌شود", async ({
     page,
     browser,
   }) => {
-    test.setTimeout(120_000)
-    test.fail(
-      true,
-      'انتظار می‌رود تا وقتی boards/columns/cards به publication برسدند، شکست بخورد'
-    )
+    test.setTimeout(120_000);
 
-    const a = await createTestUser('rtA')
-    const b = await createTestUser('rtB')
+    const a = await createTestUser("rtA");
+    const b = await createTestUser("rtB");
 
-    await login(page, a)
-    const link = await createBoard(page, 'بورد realtime')
-    await link.click()
-    await addColumn(page, 'کارها')
-    const boardId = page.url().split('/board/')[1]
+    await login(page, a);
+    const link = await createBoard(page, "بورد realtime");
+    await link.click();
+    await addColumn(page, "کارها");
+    const boardId = page.url().split("/board/")[1];
 
     // B عضو editor می‌شود تا بتواند کارت بسازد
-    await userRest(a).rpc('invite_to_board', {
+    await userRest(a).rpc("invite_to_board", {
       p_board_id: boardId,
       p_email: b.email,
-      p_role: 'editor',
-    })
+      p_role: "editor",
+    });
 
-    const ctx = await browser.newContext()
-    const pageB = await ctx.newPage()
-    await login(pageB, b)
-    const panel = pageB.getByRole('region', { name: 'دعوت‌های شما' })
-    await expect(panel).toBeVisible({ timeout: 30_000 })
-    await panel.getByRole('button', { name: 'پذیرفتن' }).click()
+    const ctx = await browser.newContext();
+    const pageB = await ctx.newPage();
+    await login(pageB, b);
+    const panel = pageB.getByRole("region", { name: "دعوت‌های شما" });
+    await expect(panel).toBeVisible({ timeout: 30_000 });
+    await panel.getByRole("button", { name: "پذیرفتن" }).click();
     await expect
       .poll(
         async () =>
-          (await userRest(b).get(`board_members?board_id=eq.${boardId}&select=user_id`)).rows?.length ?? 0,
-        { timeout: 20_000 }
+          (
+            await userRest(b).get(
+              `board_members?board_id=eq.${boardId}&select=user_id`,
+            )
+          ).rows?.length ?? 0,
+        { timeout: 20_000 },
       )
-      .toBe(1)
+      .toBe(1);
 
     // هر دو روی یک بورد، دو نشست مستقل
-    await pageB.goto(`/board/${boardId}`)
-    await waitForColumn(pageB, 'کارها')
-    await page.reload()
-    await waitForHydration(page)
-    await waitForColumn(page, 'کارها')
+    await pageB.goto(`/board/${boardId}`);
+    await waitForColumn(pageB, "کارها");
+    await page.reload();
+    await waitForHydration(page);
+    await waitForColumn(page, "کارها");
 
     // A بورد را در حالت «تماشا» نگه می‌دارد و B کارت می‌سازد
-    await addCard(pageB, 'کارها', 'کارت زنده')
+    await page.waitForTimeout(3000);
+    await addCard(pageB, "کارها", "کارت زنده");
 
     // بدون reload باید دیده شود. اگر realtime کار می‌کرد، این انتظار پاس می‌شد.
     //
@@ -84,35 +93,37 @@ test.describe('Realtime', () => {
     // Playwright خودش خطا می‌دهد تا این علامت را برداریم — یعنی هیچ‌وقت
     // یک خرابی واقعی پنهان نمی‌شود.
     await expect(
-      card(page, 'کارت زنده'),
-      'کارت ساخته‌شده در مرورگر دوم باید بدون reload در مرورگر اول ظاهر شود'
-    ).toBeVisible({ timeout: 20_000 })
+      card(page, "کارت زنده"),
+      "کارت ساخته‌شده در مرورگر دوم باید بدون reload در مرورگر اول ظاهر شود",
+    ).toBeVisible({ timeout: 20_000 });
 
-    await ctx.close()
-  })
+    await ctx.close();
+  });
 
-  test('کاربر با reload دستی همیشه داده‌ی درست را می‌بیند (fallback)', async ({ page }) => {
-    const user = await createTestUser('rtfallback')
-    await login(page, user)
-    const link = await createBoard(page, 'بورد fallback')
-    await link.click()
-    await addColumn(page, 'کارها')
-    const boardId = page.url().split('/board/')[1]
+  test("کاربر با reload دستی همیشه داده‌ی درست را می‌بیند (fallback)", async ({
+    page,
+  }) => {
+    const user = await createTestUser("rtfallback");
+    await login(page, user);
+    const link = await createBoard(page, "بورد fallback");
+    await link.click();
+    await addColumn(page, "کارها");
+    const boardId = page.url().split("/board/")[1];
 
     // از بیرون از UI یک کارت می‌سازیم تا ثابت کنیم داده‌ی تازه پس از بارگذاری
     // دوباره درست خوانده می‌شود (یعنی مشکل فقط نبودِ push است، نه خواندن).
-    const rest = userRest(user)
-    const { rows } = await rest.get(`columns?board_id=eq.${boardId}&select=id`)
-    const created = await rest.post('cards', {
+    const rest = userRest(user);
+    const { rows } = await rest.get(`columns?board_id=eq.${boardId}&select=id`);
+    const created = await rest.post("cards", {
       column_id: rows?.[0]?.id,
-      title: 'کارت بیرونی',
+      title: "کارت بیرونی",
       position: 0,
-    })
-    expect(created.status).toBeLessThan(300)
+    });
+    expect(created.status).toBeLessThan(300);
 
-    await page.reload()
-    await waitForHydration(page)
-    await waitForColumn(page, 'کارها')
-    await expect(card(page, 'کارت بیرونی')).toBeVisible()
-  })
-})
+    await page.reload();
+    await waitForHydration(page);
+    await waitForColumn(page, "کارها");
+    await expect(card(page, "کارت بیرونی")).toBeVisible();
+  });
+});

@@ -88,7 +88,7 @@ export default function ColumnHeader({
 
   return (
     <div className="flex items-center gap-1.5 px-3 pb-2 pt-3">
-      {!isPending && (
+      {!isPending && canEdit && (
         <button
           type="button"
           {...dragHandleProps}
