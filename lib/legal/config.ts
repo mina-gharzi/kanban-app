@@ -23,11 +23,11 @@ export type LegalConfig = {
 
 export const LEGAL: LegalConfig = {
   serviceName: 'کانبان',
-  operatorName: '',
-  contactEmail: '',
-  governingLaw: '',
-  emailProvider: '',
-  databaseRegion: '',
+  operatorName: 'Mina Gharzi',
+  contactEmail: 'contact@example.com',
+  governingLaw: 'قوانین جمهوری اسلامی ایران',
+  emailProvider: 'Supabase Auth',
+  databaseRegion: 'اتحادیه اروپا (Supabase)',
   lastUpdated: '2026-10-05',
   termsVersion: '2026-10-05',
 }
