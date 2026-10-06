@@ -16,6 +16,22 @@ import { dirname, join } from 'node:path'
 
 const here = dirname(fileURLToPath(import.meta.url))
 
+// محافظ: این تست‌ها روی دیتابیس متصل به .env.local داده می‌سازند و حذف می‌کنند.
+// بدون تأیید صریح که این دیتابیس staging/آزمایشی است (نه production) اجرا نمی‌شوند.
+//   CONFIRM_NON_PRODUCTION=yes node tests/security/run-all.mjs
+//   یا: node tests/security/run-all.mjs --confirm-non-production
+if (
+  process.env.CONFIRM_NON_PRODUCTION !== 'yes' &&
+  !process.argv.includes('--confirm-non-production')
+) {
+  console.error(
+    'متوقف شد: تأیید نشده که .env.local به دیتابیس staging/آزمایشی وصل است.\n' +
+      'اگر مطمئنید production نیست، با CONFIRM_NON_PRODUCTION=yes یا --confirm-non-production اجرا کنید.'
+  )
+  process.exit(2)
+}
+
+
 const SUITES = [
   '01-ownership-isolation.test.mjs',
   '02-insert-with-check.test.mjs',

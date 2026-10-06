@@ -24,7 +24,7 @@ export type LegalConfig = {
 export const LEGAL: LegalConfig = {
   serviceName: 'کانبان',
   operatorName: 'Mina Gharzi',
-  contactEmail: 'contact@example.com',
+  contactEmail: 'minagharzipv@gmail.com',
   governingLaw: 'قوانین جمهوری اسلامی ایران',
   emailProvider: 'Supabase Auth',
   databaseRegion: 'اتحادیه اروپا (Supabase)',
@@ -35,8 +35,28 @@ export const LEGAL: LegalConfig = {
 /** فیلدهایی که بدون آن‌ها صفحه‌ی حقوقی ناقص است */
 export const REQUIRED_LEGAL_FIELDS = ['operatorName', 'contactEmail', 'governingLaw'] as const
 
+/** دامنه‌هایی که فقط نمونه/آزمایشی‌اند و نباید به‌عنوان ایمیل تماس منتشر شوند */
+const PLACEHOLDER_EMAIL_DOMAINS = ['example.com', 'example.org', 'example.net', 'test.com', 'localhost']
+
+/**
+ * آیا این مقدار یک ایمیل واقعی است؟ خالی، ساختار نامعتبر، یا دامنه‌ی نمونه
+ * (مثل `contact@example.com`) یعنی هنوز پر نشده است.
+ */
+export function isRealEmail(value: string): boolean {
+  const email = value.trim().toLowerCase()
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return false
+  const domain = email.slice(email.lastIndexOf('@') + 1)
+  return !PLACEHOLDER_EMAIL_DOMAINS.some((d) => domain === d || domain.endsWith(`.${d}`))
+}
+
+function isFieldFilled(key: (typeof REQUIRED_LEGAL_FIELDS)[number], config: LegalConfig): boolean {
+  const value = config[key].trim()
+  if (value === '') return false
+  return key === 'contactEmail' ? isRealEmail(value) : true
+}
+
 export function missingLegalFields(config: LegalConfig = LEGAL): string[] {
-  return REQUIRED_LEGAL_FIELDS.filter((key) => config[key].trim() === '')
+  return REQUIRED_LEGAL_FIELDS.filter((key) => !isFieldFilled(key, config))
 }
 
 export function isLegalConfigured(config: LegalConfig = LEGAL): boolean {
