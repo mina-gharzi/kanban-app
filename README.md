@@ -8,6 +8,8 @@ A real-time collaborative Kanban board with role-based sharing, optimistic updat
 
 **Built with:** Next.js 16 · React 19 · TypeScript · Tailwind CSS v4 · Supabase (Auth, Postgres, Realtime) · TanStack Query · dnd-kit · Vitest · Playwright
 
+![CI](https://github.com/mina-gharzi/kanban-app/actions/workflows/ci.yml/badge.svg)
+
 ## What it does
 
 - **Boards, columns and cards** with drag-and-drop, including keyboard-accessible card movement
@@ -30,22 +32,22 @@ A real-time collaborative Kanban board with role-based sharing, optimistic updat
 
 ## Authorization model
 
-| Capability | Owner | Editor | Viewer |
-| --- | :---: | :---: | :---: |
-| View board, columns and cards | ✅ | ✅ | ✅ |
-| Create and edit cards, edit columns, reorder | ✅ | ✅ | ❌ |
-| Invite users and manage sharing | ✅ | ❌ | ❌ |
-| Delete the board | ✅ | ❌ | ❌ |
+| Capability                                   | Owner | Editor | Viewer |
+| -------------------------------------------- | :---: | :----: | :----: |
+| View board, columns and cards                |  ✅   |   ✅   |   ✅   |
+| Create and edit cards, edit columns, reorder |  ✅   |   ✅   |   ❌   |
+| Invite users and manage sharing              |  ✅   |   ❌   |   ❌   |
+| Delete the board                             |  ✅   |   ❌   |   ❌   |
 
 ## Testing
 
-| Layer | Tooling | Command |
-| --- | --- | --- |
-| Unit and component | Vitest, Testing Library, axe-core | `npm test` |
-| Types and lint | TypeScript, ESLint | `npm run type-check` · `npm run lint` |
-| Database | Vitest + PGlite | `npm run test:db` |
-| Security (RLS, roles, move RPC, realtime) | Node scripts against a real Supabase project | `npm run test:security` |
-| End-to-end | Playwright: auth, CRUD, drag-and-drop, realtime, sharing | `npm run test:e2e` |
+| Layer                                     | Tooling                                                  | Command                               |
+| ----------------------------------------- | -------------------------------------------------------- | ------------------------------------- |
+| Unit and component                        | Vitest, Testing Library, axe-core                        | `npm test`                            |
+| Types and lint                            | TypeScript, ESLint                                       | `npm run type-check` · `npm run lint` |
+| Database                                  | Vitest + PGlite                                          | `npm run test:db`                     |
+| Security (RLS, roles, move RPC, realtime) | Node scripts against a real Supabase project             | `npm run test:security`               |
+| End-to-end                                | Playwright: auth, CRUD, drag-and-drop, realtime, sharing | `npm run test:e2e`                    |
 
 The security suites run **158 checks against a live Supabase database**, covering ownership isolation, insert policies, cascades, the move RPC, card constraints, realtime, and a full sharing role matrix. Checks that cannot be proven without elevated database access are reported as `UNVERIFIED` instead of being counted as passes; a read-only audit script in `supabase/audit/` covers those.
 
