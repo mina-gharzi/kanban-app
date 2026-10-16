@@ -5,8 +5,6 @@ import Link from 'next/link'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { useExportMyData } from '@/hooks/useAccount'
 import { reportError } from '@/lib/errors/reportError'
-import AppShell from '@/components/layout/AppShell'
-import BoardSidebar from '@/components/layout/BoardSidebar'
 import Button from '@/components/ui/Button'
 import DeleteAccountDialog from './DeleteAccountDialog'
 
@@ -45,7 +43,7 @@ export default function AccountPage() {
   }
 
   return (
-    <AppShell sidebar={BoardSidebar} headerMeta={<span className="text-meta text-text-2">حساب کاربری</span>}>
+    <>
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto flex w-full max-w-2xl flex-col gap-5 px-4 py-8 sm:px-6 sm:py-10">
           <h1 className="text-title font-semibold text-text">حساب کاربری</h1>
@@ -87,6 +85,6 @@ export default function AccountPage() {
       </div>
 
       {isDeleting && <DeleteAccountDialog onClose={() => setIsDeleting(false)} />}
-    </AppShell>
+    </>
   )
 }

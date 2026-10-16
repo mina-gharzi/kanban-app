@@ -4,8 +4,6 @@ import { useCallback, useRef, useState } from "react";
 import Link from "next/link";
 import ErrorState from "@/components/ErrorState";
 import { useBoardMutations, useBoards } from "@/hooks/useBoards";
-import AppShell from "@/components/layout/AppShell";
-import BoardSidebar from "@/components/layout/BoardSidebar";
 import Button from "@/components/ui/Button";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import EmptyState from "@/components/ui/EmptyState";
@@ -88,10 +86,7 @@ export default function BoardsList() {
   const focusInput = () => document.getElementById("new-board-title")?.focus();
 
   return (
-    <AppShell
-      sidebar={BoardSidebar}
-      headerMeta={<span className="text-meta text-text-2">بوردهای من</span>}
-    >
+    <>
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 sm:py-10">
           {/* پنل بالایی: عنوان + ساخت سریع */}
@@ -288,6 +283,6 @@ export default function BoardsList() {
           }}
         />
       )}
-    </AppShell>
+    </>
   );
 }

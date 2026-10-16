@@ -12,8 +12,6 @@ import { useCardMutations } from '@/hooks/useCardMutations'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { permissionsFor } from '@/lib/sharing/roles'
 import { useColumnMutations } from '@/hooks/useColumnMutations'
-import AppShell from '@/components/layout/AppShell'
-import BoardSidebar from '@/components/layout/BoardSidebar'
 import BoardContent from './BoardContent'
 import { BoardPermissionsProvider } from './BoardPermissions'
 import BoardNotFound from './BoardNotFound'
@@ -66,33 +64,19 @@ export default function Board({ boardId }: Props) {
 
   // اسکلت داخل همان پوسته رندر می‌شود تا هدر و سایدبار نپرند
   if (isPending) {
-    return (
-      <AppShell sidebar={BoardSidebar}>
-        <BoardSkeleton />
-      </AppShell>
-    )
+    return <BoardSkeleton />
   }
 
   if (error) {
-    return (
-      <AppShell sidebar={BoardSidebar}>
-        {error.code === ERROR_CODES.NOT_FOUND ? (
-          <BoardNotFound />
-        ) : (
-          <ErrorState error={error} onRetry={refetch} />
-        )}
-      </AppShell>
+    return error.code === ERROR_CODES.NOT_FOUND ? (
+      <BoardNotFound />
+    ) : (
+      <ErrorState error={error} onRetry={refetch} />
     )
   }
 
   return (
     <BoardPermissionsProvider permissions={permissions}>
-    <AppShell
-      sidebar={BoardSidebar}
-      headerMeta={
-        <span className="truncate text-meta text-text-2">{board?.title}</span>
-      }
-    >
       <BoardHeader
         board={board}
         cardCount={cards.length}
@@ -140,7 +124,6 @@ export default function Board({ boardId }: Props) {
           onLeft={() => router.push('/boards')}
         />
       )}
-    </AppShell>
     </BoardPermissionsProvider>
   )
 }
