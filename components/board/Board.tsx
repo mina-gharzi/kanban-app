@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import dynamic from 'next/dynamic'
 import ErrorState from '@/components/ErrorState'
 import { ERROR_CODES } from '@/lib/errors/errorCodes'
 import { useBoard } from '@/hooks/useBoard'
@@ -15,11 +16,27 @@ import { useColumnMutations } from '@/hooks/useColumnMutations'
 import BoardContent from './BoardContent'
 import { BoardPermissionsProvider } from './BoardPermissions'
 import BoardNotFound from './BoardNotFound'
-import ShareBoardDialog from './ShareBoardDialog'
 import BoardFilters from './BoardFilters'
 import BoardHeader from './BoardHeader'
 import BoardSkeleton from './BoardSkeleton'
-import CardModal from './CardModal'
+
+/**
+ * دو دیالوگی که فقط بعد از کنش کاربر باز می‌شوند (جزئیات کارت / اشتراک‌گذاری)،
+ * از گراف ایستای اولیه‌ی بورد جدا می‌شوند.
+ *
+ * `ssr: false` مجاز است چون این کامپوننت Client است و این دو فقط با state
+ * (کلیک کاربر) رندر می‌شوند؛ پس هرگز در SSR/HTML اولیه دیده نمی‌شوند و حذف‌شان
+ * از باندل سرور و کلاینت بی‌اثر است روی خروجی اولیه.
+ *
+ * fallback پیش‌فرض `null` است، پس هیچ اسکلتی فلاش نمی‌کند: تا chunk واقعاً
+ * نرسد، چیزی نمایش داده نمی‌شود (نه delay محسوس، نه پرش).
+ *
+ * چرا dnd-kit این‌جا نیست: `DndContext` همان ابزار اصلی بورد است و ستون/کارت
+ * به‌صورت همزمان به `useSortable`/`useDroppable` نیاز دارند؛ جداشدنش کل محتوا
+ * را معلق می‌کرد و تعامل اولیه را کند می‌کرد.
+ */
+const CardModal = dynamic(() => import('./CardModal'), { ssr: false })
+const ShareBoardDialog = dynamic(() => import('./ShareBoardDialog'), { ssr: false })
 
 type Props = {
   boardId: string
