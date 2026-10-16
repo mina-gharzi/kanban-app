@@ -104,6 +104,27 @@ export async function getBoardData(boardId: string): Promise<BoardData> {
   return { columns: (columnsResult.data ?? []) as Column[], cards }
 }
 
+/**
+ * آیا بورد برای کاربر جاری دیده می‌شود؟
+ *
+ * RLS مرز حقیقت است: اگر کاربر مالک یا عضو نباشد، یا بورد حذف شده باشد،
+ * این select هیچ سطری برنمی‌گرداند و `maybeSingle` مقدار `null` می‌دهد —
+ * نه خطا. پس مقدار بازگشتی دقیقاً یعنی «دیده می‌شود / دیده نمی‌شود» و ادعای
+ * وجود قطعی رکورد در دیتابیس نمی‌کند.
+ *
+ * عمداً خطا را به «بورد نیست» ترجمه نمی‌کنیم: خطای شبکه یا دیتابیس بالا
+ * می‌رود تا نبودِ بورد با ناتوانی در بررسی‌کردن اشتباه نشود.
+ */
+export async function boardExists(boardId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('boards')
+    .select('id')
+    .eq('id', boardId)
+    .maybeSingle()
+  if (error) throw normalizeError(error)
+  return data !== null
+}
+
 export async function getBoards(): Promise<Board[]> {
   const { data: sessionData } = await supabase.auth.getSession()
   const userId = sessionData.session?.user.id

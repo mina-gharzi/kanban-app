@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import ErrorState from '@/components/ErrorState'
+import { ERROR_CODES } from '@/lib/errors/errorCodes'
 import { useBoard } from '@/hooks/useBoard'
 import { useBoardFilters } from '@/hooks/useBoardFilters'
 import { useBoardRealtime } from '@/hooks/useBoardRealtime'
@@ -15,6 +16,7 @@ import AppShell from '@/components/layout/AppShell'
 import BoardSidebar from '@/components/layout/BoardSidebar'
 import BoardContent from './BoardContent'
 import { BoardPermissionsProvider } from './BoardPermissions'
+import BoardNotFound from './BoardNotFound'
 import ShareBoardDialog from './ShareBoardDialog'
 import BoardFilters from './BoardFilters'
 import BoardHeader from './BoardHeader'
@@ -74,7 +76,11 @@ export default function Board({ boardId }: Props) {
   if (error) {
     return (
       <AppShell sidebar={BoardSidebar}>
-        <ErrorState error={error} onRetry={refetch} />
+        {error.code === ERROR_CODES.NOT_FOUND ? (
+          <BoardNotFound />
+        ) : (
+          <ErrorState error={error} onRetry={refetch} />
+        )}
       </AppShell>
     )
   }

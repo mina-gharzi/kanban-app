@@ -4,9 +4,9 @@ import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { normalizeError } from '@/lib/errors/normalizeError'
 import { sortByPosition } from '@/lib/board/layout'
+import { loadBoardData } from '@/lib/board/loadBoard'
 import type { Card, Column } from '@/lib/board/types'
 import { queryKeys } from '@/lib/queries/keys'
-import { getBoardData } from '@/lib/supabase/queries'
 
 const EMPTY_CARDS: Card[] = []
 const EMPTY_COLUMNS: Column[] = []
@@ -20,7 +20,7 @@ const EMPTY_COLUMNS: Column[] = []
 export function useBoard(boardId: string) {
   const query = useQuery({
     queryKey: queryKeys.board(boardId),
-    queryFn: () => getBoardData(boardId),
+    queryFn: () => loadBoardData(boardId),
   })
 
   const columns = query.data?.columns
